@@ -2,39 +2,39 @@
 
 ## 0. 项目初始化
 
-* [ ] 创建后端项目 `smart-office-server`
+* [x] 创建后端项目 `smart-office-server`
 * [ ] 创建前端项目 `smart-office-web`
-* [ ] 创建 `docker` 目录
-* [ ] 创建 `docs` 目录
-* [ ] 添加 `.gitignore`
-* [ ] 添加 `README.md`
-* [ ] 添加 `TODO.md`
-* [ ] 统一 Java 版本为 Java 17
-* [ ] 统一后端编码为 UTF-8
-* [ ] 统一接口返回结构
-* [ ] 统一异常处理
-* [ ] 统一分页返回结构
+* [x] 创建 `docker` 目录
+* [x] 创建 `docs` 目录
+* [x] 添加 `.gitignore`
+* [x] 添加 `README.md`
+* [x] 添加 `TODO.md`
+* [x] 统一 Java 版本为 Java 17
+* [x] 统一后端编码为 UTF-8
+* [x] 统一接口返回结构
+* [x] 统一异常处理
+* [x] 统一分页返回结构
 
 ## 1. 后端基础工程
 
-* [ ] 引入 Spring Boot
-* [ ] 引入 Spring Web
-* [ ] 引入 MyBatis-Plus
-* [ ] 引入 MySQL Driver
-* [ ] 引入 Lombok
-* [ ] 引入 Validation
-* [ ] 引入 Knife4j / Swagger
-* [ ] 配置 dev 环境
-* [ ] 配置 test 环境
-* [ ] 配置 prod 环境
-* [ ] 创建通用返回类 `Result`
-* [ ] 创建通用分页类 `PageResult`
-* [ ] 创建全局异常处理器
-* [ ] 创建业务异常类
-* [ ] 创建基础实体类 `BaseEntity`
-* [ ] 创建 MyBatis-Plus 自动填充配置
-* [ ] 创建逻辑删除配置
-* [ ] 创建接口文档配置
+* [x] 引入 Spring Boot
+* [x] 引入 Spring Web
+* [x] 引入 MyBatis-Plus
+* [x] 引入 MySQL Driver
+* [x] 引入 Lombok
+* [x] 引入 Validation
+* [x] 引入 Knife4j / Swagger
+* [x] 配置 dev 环境
+* [x] 配置 test 环境
+* [x] 配置 prod 环境
+* [x] 创建通用返回类 `Result`
+* [x] 创建通用分页类 `PageResult`
+* [x] 创建全局异常处理器
+* [x] 创建业务异常类
+* [x] 创建基础实体类 `BaseEntity`
+* [x] 创建 MyBatis-Plus 自动填充配置
+* [x] 创建逻辑删除配置
+* [x] 创建接口文档配置
 
 ## 2. Docker 依赖环境
 
@@ -44,8 +44,8 @@
 * [ ] 编写 Elasticsearch docker-compose 配置
 * [ ] 编写 MinIO docker-compose 配置
 * [ ] 编写 XXL-JOB Admin docker-compose 配置
-* [ ] 准备数据库初始化 SQL
-* [ ] 准备测试数据 SQL
+* [x] 准备数据库初始化 SQL
+* [x] 准备测试数据 SQL
 
 第一阶段可以只启动：
 
@@ -63,17 +63,17 @@
 
 ### 数据库
 
-* [ ] 创建 `sys_user` 表
-* [ ] 创建 `sys_role` 表
-* [ ] 创建 `sys_menu` 表
-* [ ] 创建 `sys_user_role` 表
-* [ ] 创建 `sys_role_menu` 表
+* [x] 创建 `sys_user` 表
+* [x] 创建 `sys_role` 表
+* [x] 创建 `sys_menu` 表
+* [x] 创建 `sys_user_role` 表
+* [x] 创建 `sys_role_menu` 表
 
 ### 后端接口
 
-* [ ] 用户登录接口
-* [ ] 用户退出接口
-* [ ] 获取当前用户信息接口
+* [x] 用户登录接口
+* [x] 用户退出接口
+* [x] 获取当前用户信息接口
 * [ ] 用户分页查询接口
 * [ ] 新增用户接口
 * [ ] 修改用户接口
@@ -89,11 +89,11 @@
 
 ### 权限能力
 
-* [ ] 接入 JWT
-* [ ] 接入 Spring Security
-* [ ] 实现登录认证过滤器
-* [ ] 实现接口权限校验
-* [ ] 实现密码加密
+* [x] 接入 JWT
+* [x] 接入 Spring Security
+* [x] 实现登录认证过滤器
+* [x] 实现接口权限校验
+* [x] 实现密码加密
 * [ ] Redis 存储登录 Token
 * [ ] 用户退出时删除 Token
 
@@ -101,10 +101,10 @@
 
 ### 数据库
 
-* [ ] 创建 `org_company` 表
-* [ ] 创建 `org_department` 表
-* [ ] 创建 `org_position` 表
-* [ ] 创建 `org_employee` 表
+* [x] 创建 `org_company` 表
+* [x] 创建 `org_department` 表
+* [x] 创建 `org_position` 表
+* [x] 创建 `org_employee` 表
 
 ### 后端接口
 
@@ -129,10 +129,10 @@
 
 ### 数据库
 
-* [ ] 创建 `approval_form` 表
-* [ ] 创建 `approval_record` 表
-* [ ] 创建 `approval_rule` 表
-* [ ] 创建 `approval_attachment` 表
+* [x] 创建 `approval_form` 表
+* [x] 创建 `approval_record` 表
+* [x] 创建 `approval_rule` 表
+* [x] 创建 `approval_attachment` 表
 
 ### 审批类型
 
@@ -187,9 +187,9 @@
 
 ### 数据库
 
-* [ ] 创建 `attendance_rule` 表
-* [ ] 创建 `attendance_record` 表
-* [ ] 创建 `attendance_summary` 表
+* [x] 创建 `attendance_rule` 表
+* [x] 创建 `attendance_record` 表
+* [x] 创建 `attendance_summary` 表
 
 ### 后端接口
 
@@ -218,8 +218,8 @@
 
 ### 数据库
 
-* [ ] 创建 `message_notice` 表
-* [ ] 创建 `message_todo` 表
+* [x] 创建 `message_notice` 表
+* [x] 创建 `message_todo` 表
 
 ### 后端接口
 
@@ -251,7 +251,7 @@
 
 ### 数据库
 
-* [ ] 创建 `file_record` 表
+* [x] 创建 `file_record` 表
 
 ### MinIO
 
@@ -279,8 +279,8 @@
 
 ### 数据库
 
-* [ ] 创建 `policy_document` 表
-* [ ] 创建 `policy_document_chunk` 表
+* [x] 创建 `policy_document` 表
+* [x] 创建 `policy_document_chunk` 表
 
 ### 制度文档
 
@@ -326,9 +326,9 @@
 
 ### 数据库
 
-* [ ] 创建 `ai_conversation` 表
-* [ ] 创建 `ai_message` 表
-* [ ] 创建 `ai_prompt_template` 表
+* [x] 创建 `ai_conversation` 表
+* [x] 创建 `ai_message` 表
+* [x] 创建 `ai_prompt_template` 表
 
 ### Spring AI
 
@@ -432,13 +432,13 @@
 
 ## 13. 测试数据
 
-* [ ] 创建管理员账号
-* [ ] 创建普通员工账号
-* [ ] 创建部门负责人账号
-* [ ] 创建财务账号
-* [ ] 创建测试部门
-* [ ] 创建测试岗位
-* [ ] 创建测试员工
+* [x] 创建管理员账号
+* [x] 创建普通员工账号
+* [x] 创建部门负责人账号
+* [x] 创建财务账号
+* [x] 创建测试部门
+* [x] 创建测试岗位
+* [x] 创建测试员工
 * [ ] 创建请假审批测试数据
 * [ ] 创建加班审批测试数据
 * [ ] 创建报销审批测试数据

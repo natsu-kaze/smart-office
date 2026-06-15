@@ -1,0 +1,423 @@
+CREATE DATABASE IF NOT EXISTS smart_office DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE smart_office;
+
+CREATE TABLE IF NOT EXISTS sys_user (
+    id BIGINT PRIMARY KEY COMMENT 'Primary key',
+    username VARCHAR(64) NOT NULL COMMENT 'Login username',
+    password VARCHAR(255) NOT NULL COMMENT 'Encoded password',
+    real_name VARCHAR(64) NOT NULL COMMENT 'Real name',
+    phone VARCHAR(32) DEFAULT NULL COMMENT 'Phone number',
+    email VARCHAR(128) DEFAULT NULL COMMENT 'Email',
+    avatar VARCHAR(512) DEFAULT NULL COMMENT 'Avatar URL',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '1 enabled, 0 disabled',
+    last_login_time DATETIME DEFAULT NULL COMMENT 'Last login time',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_sys_user_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='System user';
+
+CREATE TABLE IF NOT EXISTS sys_role (
+    id BIGINT PRIMARY KEY,
+    role_code VARCHAR(64) NOT NULL,
+    role_name VARCHAR(64) NOT NULL,
+    sort INT NOT NULL DEFAULT 0,
+    status TINYINT NOT NULL DEFAULT 1,
+    remark VARCHAR(255) DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_sys_role_code (role_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='System role';
+
+CREATE TABLE IF NOT EXISTS sys_menu (
+    id BIGINT PRIMARY KEY,
+    parent_id BIGINT NOT NULL DEFAULT 0,
+    menu_name VARCHAR(64) NOT NULL,
+    menu_type VARCHAR(16) NOT NULL COMMENT 'CATALOG, MENU, BUTTON',
+    path VARCHAR(255) DEFAULT NULL,
+    component VARCHAR(255) DEFAULT NULL,
+    permission VARCHAR(128) DEFAULT NULL,
+    icon VARCHAR(64) DEFAULT NULL,
+    sort INT NOT NULL DEFAULT 0,
+    visible TINYINT NOT NULL DEFAULT 1,
+    status TINYINT NOT NULL DEFAULT 1,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='System menu and permission';
+
+CREATE TABLE IF NOT EXISTS sys_user_role (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    role_id BIGINT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_sys_user_role (user_id, role_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='User role relation';
+
+CREATE TABLE IF NOT EXISTS sys_role_menu (
+    id BIGINT PRIMARY KEY,
+    role_id BIGINT NOT NULL,
+    menu_id BIGINT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_sys_role_menu (role_id, menu_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Role menu relation';
+
+CREATE TABLE IF NOT EXISTS org_company (
+    id BIGINT PRIMARY KEY,
+    company_code VARCHAR(64) NOT NULL,
+    company_name VARCHAR(128) NOT NULL,
+    contact_name VARCHAR(64) DEFAULT NULL,
+    contact_phone VARCHAR(32) DEFAULT NULL,
+    address VARCHAR(255) DEFAULT NULL,
+    status TINYINT NOT NULL DEFAULT 1,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_org_company_code (company_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Company';
+
+CREATE TABLE IF NOT EXISTS org_department (
+    id BIGINT PRIMARY KEY,
+    parent_id BIGINT NOT NULL DEFAULT 0,
+    department_code VARCHAR(64) NOT NULL,
+    department_name VARCHAR(128) NOT NULL,
+    leader_user_id BIGINT DEFAULT NULL,
+    sort INT NOT NULL DEFAULT 0,
+    status TINYINT NOT NULL DEFAULT 1,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_org_department_code (department_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Department';
+
+CREATE TABLE IF NOT EXISTS org_position (
+    id BIGINT PRIMARY KEY,
+    department_id BIGINT DEFAULT NULL,
+    position_code VARCHAR(64) NOT NULL,
+    position_name VARCHAR(128) NOT NULL,
+    sort INT NOT NULL DEFAULT 0,
+    status TINYINT NOT NULL DEFAULT 1,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_org_position_code (position_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Position';
+
+CREATE TABLE IF NOT EXISTS org_employee (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    employee_no VARCHAR(64) NOT NULL,
+    department_id BIGINT NOT NULL,
+    position_id BIGINT DEFAULT NULL,
+    hire_date DATE DEFAULT NULL,
+    employment_status VARCHAR(32) NOT NULL DEFAULT 'ACTIVE',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_org_employee_user (user_id),
+    UNIQUE KEY uk_org_employee_no (employee_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Employee';
+
+CREATE TABLE IF NOT EXISTS approval_form (
+    id BIGINT PRIMARY KEY,
+    approval_type VARCHAR(32) NOT NULL COMMENT 'LEAVE, OVERTIME, EXPENSE, GENERAL',
+    title VARCHAR(128) NOT NULL,
+    applicant_user_id BIGINT NOT NULL,
+    applicant_dept_id BIGINT DEFAULT NULL,
+    content JSON DEFAULT NULL,
+    amount DECIMAL(12,2) DEFAULT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'DRAFT',
+    current_approver_id BIGINT DEFAULT NULL,
+    submitted_at DATETIME DEFAULT NULL,
+    completed_at DATETIME DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    KEY idx_approval_form_applicant (applicant_user_id),
+    KEY idx_approval_form_approver (current_approver_id),
+    KEY idx_approval_form_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Approval form';
+
+CREATE TABLE IF NOT EXISTS approval_record (
+    id BIGINT PRIMARY KEY,
+    form_id BIGINT NOT NULL,
+    action VARCHAR(32) NOT NULL,
+    operator_user_id BIGINT NOT NULL,
+    from_status VARCHAR(32) DEFAULT NULL,
+    to_status VARCHAR(32) NOT NULL,
+    comment VARCHAR(512) DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    KEY idx_approval_record_form (form_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Approval operation record';
+
+CREATE TABLE IF NOT EXISTS approval_process (
+    id BIGINT PRIMARY KEY,
+    form_id BIGINT NOT NULL,
+    approver_user_id BIGINT NOT NULL,
+    step_order INT NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    approved_at DATETIME DEFAULT NULL,
+    comment VARCHAR(512) DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    KEY idx_approval_process_form (form_id),
+    KEY idx_approval_process_approver (approver_user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Approval process node';
+
+CREATE TABLE IF NOT EXISTS approval_rule (
+    id BIGINT PRIMARY KEY,
+    approval_type VARCHAR(32) NOT NULL,
+    amount_limit DECIMAL(12,2) DEFAULT NULL,
+    required_roles VARCHAR(255) DEFAULT NULL,
+    status TINYINT NOT NULL DEFAULT 1,
+    remark VARCHAR(255) DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Approval rule';
+
+CREATE TABLE IF NOT EXISTS approval_attachment (
+    id BIGINT PRIMARY KEY,
+    form_id BIGINT NOT NULL,
+    file_id BIGINT NOT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_approval_attachment (form_id, file_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Approval attachment';
+
+CREATE TABLE IF NOT EXISTS attendance_rule (
+    id BIGINT PRIMARY KEY,
+    rule_name VARCHAR(64) NOT NULL,
+    work_start_time TIME NOT NULL DEFAULT '09:00:00',
+    work_end_time TIME NOT NULL DEFAULT '18:00:00',
+    late_minutes INT NOT NULL DEFAULT 0,
+    early_leave_minutes INT NOT NULL DEFAULT 0,
+    status TINYINT NOT NULL DEFAULT 1,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Attendance rule';
+
+CREATE TABLE IF NOT EXISTS attendance_record (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    attendance_date DATE NOT NULL,
+    check_in_time DATETIME DEFAULT NULL,
+    check_out_time DATETIME DEFAULT NULL,
+    check_in_status VARCHAR(32) DEFAULT NULL,
+    check_out_status VARCHAR(32) DEFAULT NULL,
+    remark VARCHAR(255) DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_attendance_record_user_date (user_id, attendance_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Attendance record';
+
+CREATE TABLE IF NOT EXISTS attendance_summary (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    summary_month CHAR(7) NOT NULL COMMENT 'yyyy-MM',
+    normal_days INT NOT NULL DEFAULT 0,
+    late_count INT NOT NULL DEFAULT 0,
+    early_leave_count INT NOT NULL DEFAULT 0,
+    missing_count INT NOT NULL DEFAULT 0,
+    leave_days DECIMAL(5,2) NOT NULL DEFAULT 0,
+    overtime_hours DECIMAL(6,2) NOT NULL DEFAULT 0,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_attendance_summary_user_month (user_id, summary_month)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Attendance monthly summary';
+
+CREATE TABLE IF NOT EXISTS message_notice (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    title VARCHAR(128) NOT NULL,
+    content VARCHAR(1000) NOT NULL,
+    business_type VARCHAR(32) DEFAULT NULL,
+    business_id BIGINT DEFAULT NULL,
+    read_status TINYINT NOT NULL DEFAULT 0,
+    read_time DATETIME DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    KEY idx_message_notice_user_read (user_id, read_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Message notice';
+
+CREATE TABLE IF NOT EXISTS message_todo (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    title VARCHAR(128) NOT NULL,
+    business_type VARCHAR(32) NOT NULL,
+    business_id BIGINT NOT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING',
+    due_time DATETIME DEFAULT NULL,
+    completed_time DATETIME DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    KEY idx_message_todo_user_status (user_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Todo task';
+
+CREATE TABLE IF NOT EXISTS file_record (
+    id BIGINT PRIMARY KEY,
+    original_name VARCHAR(255) NOT NULL,
+    storage_name VARCHAR(255) NOT NULL,
+    bucket VARCHAR(128) NOT NULL,
+    object_key VARCHAR(512) NOT NULL,
+    content_type VARCHAR(128) DEFAULT NULL,
+    size BIGINT NOT NULL DEFAULT 0,
+    url VARCHAR(1024) DEFAULT NULL,
+    uploader_id BIGINT DEFAULT NULL,
+    business_type VARCHAR(32) DEFAULT NULL,
+    business_id BIGINT DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='File record';
+
+CREATE TABLE IF NOT EXISTS ai_conversation (
+    id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    title VARCHAR(128) NOT NULL,
+    status TINYINT NOT NULL DEFAULT 1,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI conversation';
+
+CREATE TABLE IF NOT EXISTS ai_message (
+    id BIGINT PRIMARY KEY,
+    conversation_id BIGINT NOT NULL,
+    role VARCHAR(32) NOT NULL,
+    content TEXT NOT NULL,
+    tokens INT DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    KEY idx_ai_message_conversation (conversation_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI message';
+
+CREATE TABLE IF NOT EXISTS ai_prompt_template (
+    id BIGINT PRIMARY KEY,
+    template_code VARCHAR(64) NOT NULL,
+    template_name VARCHAR(128) NOT NULL,
+    scene VARCHAR(64) NOT NULL,
+    prompt TEXT NOT NULL,
+    status TINYINT NOT NULL DEFAULT 1,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_ai_prompt_template_code (template_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI prompt template';
+
+CREATE TABLE IF NOT EXISTS policy_document (
+    id BIGINT PRIMARY KEY,
+    title VARCHAR(128) NOT NULL,
+    content MEDIUMTEXT DEFAULT NULL,
+    summary VARCHAR(1000) DEFAULT NULL,
+    document_version VARCHAR(32) DEFAULT NULL,
+    status VARCHAR(32) NOT NULL DEFAULT 'DRAFT',
+    publisher_id BIGINT DEFAULT NULL,
+    published_at DATETIME DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    KEY idx_policy_document_title (title)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Policy document';
+
+CREATE TABLE IF NOT EXISTS policy_document_chunk (
+    id BIGINT PRIMARY KEY,
+    document_id BIGINT NOT NULL,
+    chunk_index INT NOT NULL,
+    content TEXT NOT NULL,
+    vector_id VARCHAR(128) DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    created_by BIGINT DEFAULT NULL,
+    updated_by BIGINT DEFAULT NULL,
+    deleted TINYINT NOT NULL DEFAULT 0,
+    version INT NOT NULL DEFAULT 0,
+    UNIQUE KEY uk_policy_document_chunk (document_id, chunk_index)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Policy document chunk';
