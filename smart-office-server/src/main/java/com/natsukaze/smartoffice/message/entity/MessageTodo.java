@@ -2,6 +2,8 @@ package com.natsukaze.smartoffice.message.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.natsukaze.smartoffice.common.entity.BaseEntity;
+import com.natsukaze.smartoffice.common.enums.BusinessType;
+import com.natsukaze.smartoffice.common.enums.TodoStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -16,11 +18,11 @@ public class MessageTodo extends BaseEntity {
 
     private String title;
 
-    private String businessType;
+    private BusinessType businessType;
 
     private Long businessId;
 
-    private String status;
+    private TodoStatus status;
 
     private LocalDateTime dueTime;
 

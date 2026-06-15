@@ -1,6 +1,7 @@
 package com.natsukaze.smartoffice.file.service;
 
 import com.natsukaze.smartoffice.common.exception.BusinessException;
+import com.natsukaze.smartoffice.common.enums.BusinessType;
 import com.natsukaze.smartoffice.file.dto.FileRecordCreateRequest;
 import com.natsukaze.smartoffice.file.entity.FileRecord;
 import com.natsukaze.smartoffice.file.mapper.FileRecordMapper;
@@ -26,7 +27,7 @@ public class FileRecordService {
         record.setSize(request.getSize() == null ? 0L : request.getSize());
         record.setUrl(request.getUrl());
         record.setUploaderId(uploaderId);
-        record.setBusinessType(request.getBusinessType());
+        record.setBusinessType(BusinessType.ofNullable(request.getBusinessType()));
         record.setBusinessId(request.getBusinessId());
         fileRecordMapper.insert(record);
         return toVO(record);
@@ -66,7 +67,7 @@ public class FileRecordService {
                 .size(record.getSize())
                 .url(record.getUrl())
                 .uploaderId(record.getUploaderId())
-                .businessType(record.getBusinessType())
+                .businessType(record.getBusinessType() == null ? null : record.getBusinessType().getCode())
                 .businessId(record.getBusinessId())
                 .build();
     }

@@ -2,6 +2,7 @@ package com.natsukaze.smartoffice.approval.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.natsukaze.smartoffice.common.entity.BaseEntity;
+import com.natsukaze.smartoffice.common.enums.ApprovalStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -18,7 +19,7 @@ public class ApprovalProcess extends BaseEntity {
 
     private Integer stepOrder;
 
-    private String status;
+    private ApprovalStatus status;
 
     private LocalDateTime approvedAt;
 

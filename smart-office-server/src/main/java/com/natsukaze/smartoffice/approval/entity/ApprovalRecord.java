@@ -2,6 +2,8 @@ package com.natsukaze.smartoffice.approval.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.natsukaze.smartoffice.common.entity.BaseEntity;
+import com.natsukaze.smartoffice.common.enums.ApprovalAction;
+import com.natsukaze.smartoffice.common.enums.ApprovalStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -12,13 +14,13 @@ public class ApprovalRecord extends BaseEntity {
 
     private Long formId;
 
-    private String action;
+    private ApprovalAction action;
 
     private Long operatorUserId;
 
-    private String fromStatus;
+    private ApprovalStatus fromStatus;
 
-    private String toStatus;
+    private ApprovalStatus toStatus;
 
     private String comment;
 }

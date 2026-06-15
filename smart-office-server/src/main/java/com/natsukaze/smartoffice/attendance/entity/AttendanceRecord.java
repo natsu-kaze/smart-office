@@ -2,6 +2,7 @@ package com.natsukaze.smartoffice.attendance.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.natsukaze.smartoffice.common.entity.BaseEntity;
+import com.natsukaze.smartoffice.common.enums.AttendanceStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -21,9 +22,9 @@ public class AttendanceRecord extends BaseEntity {
 
     private LocalDateTime checkOutTime;
 
-    private String checkInStatus;
+    private AttendanceStatus checkInStatus;
 
-    private String checkOutStatus;
+    private AttendanceStatus checkOutStatus;
 
     private String remark;
 }

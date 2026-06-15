@@ -3,6 +3,7 @@ package com.natsukaze.smartoffice.search.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.natsukaze.smartoffice.common.core.PageResult;
+import com.natsukaze.smartoffice.common.enums.DocumentStatus;
 import com.natsukaze.smartoffice.common.exception.BusinessException;
 import com.natsukaze.smartoffice.search.dto.PolicyDocumentPageQuery;
 import com.natsukaze.smartoffice.search.dto.PolicyDocumentSaveRequest;
@@ -24,7 +25,8 @@ public class PolicyDocumentService {
 
     public PageResult<PolicyDocumentVO> page(PolicyDocumentPageQuery query) {
         LambdaQueryWrapper<PolicyDocument> wrapper = new LambdaQueryWrapper<PolicyDocument>()
-                .eq(StringUtils.hasText(query.getStatus()), PolicyDocument::getStatus, query.getStatus())
+                .eq(StringUtils.hasText(query.getStatus()), PolicyDocument::getStatus,
+                        DocumentStatus.ofNullable(query.getStatus()))
                 .and(StringUtils.hasText(query.getKeyword()), w -> w
                         .like(PolicyDocument::getTitle, query.getKeyword())
                         .or()
@@ -41,7 +43,7 @@ public class PolicyDocumentService {
         PolicyDocument document = new PolicyDocument();
         fill(document, request);
         document.setPublisherId(publisherId);
-        if ("PUBLISHED".equals(document.getStatus())) {
+        if (document.getStatus() == DocumentStatus.PUBLISHED) {
             document.setPublishedAt(LocalDateTime.now());
         }
         documentMapper.insert(document);
@@ -52,7 +54,7 @@ public class PolicyDocumentService {
     public PolicyDocumentVO update(Long id, PolicyDocumentSaveRequest request) {
         PolicyDocument document = requireDocument(id);
         fill(document, request);
-        if ("PUBLISHED".equals(document.getStatus()) && document.getPublishedAt() == null) {
+        if (document.getStatus() == DocumentStatus.PUBLISHED && document.getPublishedAt() == null) {
             document.setPublishedAt(LocalDateTime.now());
         }
         documentMapper.updateById(document);
@@ -74,7 +76,7 @@ public class PolicyDocumentService {
         document.setContent(request.getContent());
         document.setSummary(request.getSummary());
         document.setDocumentVersion(request.getDocumentVersion());
-        document.setStatus(StringUtils.hasText(request.getStatus()) ? request.getStatus() : "DRAFT");
+        document.setStatus(StringUtils.hasText(request.getStatus()) ? DocumentStatus.ofNullable(request.getStatus()) : DocumentStatus.DRAFT);
     }
 
     private PolicyDocument requireDocument(Long id) {
@@ -92,7 +94,7 @@ public class PolicyDocumentService {
                 .content(document.getContent())
                 .summary(document.getSummary())
                 .documentVersion(document.getDocumentVersion())
-                .status(document.getStatus())
+                .status(document.getStatus() == null ? null : document.getStatus().getCode())
                 .publisherId(document.getPublisherId())
                 .publishedAt(document.getPublishedAt())
                 .build();

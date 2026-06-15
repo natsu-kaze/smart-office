@@ -14,6 +14,7 @@ import com.natsukaze.smartoffice.attendance.vo.AttendanceRecordVO;
 import com.natsukaze.smartoffice.attendance.vo.AttendanceRuleVO;
 import com.natsukaze.smartoffice.attendance.vo.AttendanceSummaryVO;
 import com.natsukaze.smartoffice.common.core.PageResult;
+import com.natsukaze.smartoffice.common.enums.AttendanceStatus;
 import com.natsukaze.smartoffice.common.exception.BusinessException;
 import com.natsukaze.smartoffice.org.entity.OrgDepartment;
 import com.natsukaze.smartoffice.org.entity.OrgEmployee;
@@ -35,12 +36,6 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class AttendanceService {
-
-    private static final String NORMAL = "NORMAL";
-
-    private static final String LATE = "LATE";
-
-    private static final String EARLY_LEAVE = "EARLY_LEAVE";
 
     private final AttendanceRuleMapper ruleMapper;
 
@@ -65,7 +60,8 @@ public class AttendanceService {
         }
         LocalDateTime now = LocalDateTime.now();
         record.setCheckInTime(now);
-        record.setCheckInStatus(now.toLocalTime().isAfter(rule.getWorkStartTime().plusMinutes(rule.getLateMinutes())) ? LATE : NORMAL);
+        record.setCheckInStatus(now.toLocalTime().isAfter(rule.getWorkStartTime().plusMinutes(rule.getLateMinutes()))
+                ? AttendanceStatus.LATE : AttendanceStatus.NORMAL);
         saveRecord(record);
         return toRecordVO(record);
     }
@@ -81,7 +77,8 @@ public class AttendanceService {
         }
         LocalDateTime now = LocalDateTime.now();
         record.setCheckOutTime(now);
-        record.setCheckOutStatus(now.toLocalTime().isBefore(rule.getWorkEndTime().minusMinutes(rule.getEarlyLeaveMinutes())) ? EARLY_LEAVE : NORMAL);
+        record.setCheckOutStatus(now.toLocalTime().isBefore(rule.getWorkEndTime().minusMinutes(rule.getEarlyLeaveMinutes()))
+                ? AttendanceStatus.EARLY_LEAVE : AttendanceStatus.NORMAL);
         saveRecord(record);
         return toRecordVO(record);
     }
@@ -222,10 +219,11 @@ public class AttendanceService {
                 .eq(AttendanceRecord::getUserId, userId)
                 .ge(AttendanceRecord::getAttendanceDate, yearMonth.atDay(1))
                 .le(AttendanceRecord::getAttendanceDate, yearMonth.atEndOfMonth()));
-        int lateCount = (int) records.stream().filter(record -> LATE.equals(record.getCheckInStatus())).count();
-        int earlyLeaveCount = (int) records.stream().filter(record -> EARLY_LEAVE.equals(record.getCheckOutStatus())).count();
+        int lateCount = (int) records.stream().filter(record -> record.getCheckInStatus() == AttendanceStatus.LATE).count();
+        int earlyLeaveCount = (int) records.stream().filter(record -> record.getCheckOutStatus() == AttendanceStatus.EARLY_LEAVE).count();
         int normalDays = (int) records.stream()
-                .filter(record -> NORMAL.equals(record.getCheckInStatus()) && NORMAL.equals(record.getCheckOutStatus()))
+                .filter(record -> record.getCheckInStatus() == AttendanceStatus.NORMAL
+                        && record.getCheckOutStatus() == AttendanceStatus.NORMAL)
                 .count();
         SysUser user = userMapper.selectById(userId);
         return AttendanceSummaryVO.builder()
@@ -256,8 +254,8 @@ public class AttendanceService {
                 .attendanceDate(record.getAttendanceDate())
                 .checkInTime(record.getCheckInTime())
                 .checkOutTime(record.getCheckOutTime())
-                .checkInStatus(record.getCheckInStatus())
-                .checkOutStatus(record.getCheckOutStatus())
+                .checkInStatus(record.getCheckInStatus() == null ? null : record.getCheckInStatus().getCode())
+                .checkOutStatus(record.getCheckOutStatus() == null ? null : record.getCheckOutStatus().getCode())
                 .remark(record.getRemark())
                 .build();
     }

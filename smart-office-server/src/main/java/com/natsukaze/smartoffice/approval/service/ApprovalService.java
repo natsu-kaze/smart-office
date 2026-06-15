@@ -12,6 +12,11 @@ import com.natsukaze.smartoffice.approval.mapper.ApprovalRecordMapper;
 import com.natsukaze.smartoffice.approval.vo.ApprovalFormVO;
 import com.natsukaze.smartoffice.approval.vo.ApprovalRecordVO;
 import com.natsukaze.smartoffice.common.core.PageResult;
+import com.natsukaze.smartoffice.common.enums.ApprovalAction;
+import com.natsukaze.smartoffice.common.enums.ApprovalStatus;
+import com.natsukaze.smartoffice.common.enums.ApprovalType;
+import com.natsukaze.smartoffice.common.enums.BusinessType;
+import com.natsukaze.smartoffice.common.enums.TodoStatus;
 import com.natsukaze.smartoffice.common.exception.BusinessException;
 import com.natsukaze.smartoffice.message.entity.MessageNotice;
 import com.natsukaze.smartoffice.message.entity.MessageTodo;
@@ -40,13 +45,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ApprovalService {
 
-    private static final String DRAFT = "DRAFT";
-    private static final String PENDING = "PENDING";
-    private static final String APPROVED = "APPROVED";
-    private static final String REJECTED = "REJECTED";
-    private static final String WITHDRAWN = "WITHDRAWN";
-    private static final String CLOSED = "CLOSED";
-
     private final ApprovalFormMapper formMapper;
     private final ApprovalRecordMapper recordMapper;
     private final MessageTodoMapper todoMapper;
@@ -61,9 +59,9 @@ public class ApprovalService {
     public ApprovalFormVO createDraft(Long userId, ApprovalFormRequest request) {
         ApprovalForm form = new ApprovalForm();
         fillForm(form, userId, request);
-        form.setStatus(DRAFT);
+        form.setStatus(ApprovalStatus.DRAFT);
         formMapper.insert(form);
-        addRecord(form.getId(), "CREATE", userId, null, DRAFT, "create draft");
+        addRecord(form.getId(), ApprovalAction.CREATE, userId, null, ApprovalStatus.DRAFT, "create draft");
         return detail(form.getId());
     }
 
@@ -71,7 +69,7 @@ public class ApprovalService {
     public ApprovalFormVO updateDraft(Long userId, Long id, ApprovalFormRequest request) {
         ApprovalForm form = requireForm(id);
         ensureApplicant(form, userId);
-        if (!DRAFT.equals(form.getStatus())) {
+        if (form.getStatus() != ApprovalStatus.DRAFT) {
             throw new BusinessException("only draft can be updated");
         }
         fillForm(form, userId, request);
@@ -83,16 +81,16 @@ public class ApprovalService {
     public ApprovalFormVO submit(Long userId, Long id) {
         ApprovalForm form = requireForm(id);
         ensureApplicant(form, userId);
-        if (!DRAFT.equals(form.getStatus()) && !WITHDRAWN.equals(form.getStatus())) {
+        if (form.getStatus() != ApprovalStatus.DRAFT && form.getStatus() != ApprovalStatus.WITHDRAWN) {
             throw new BusinessException("only draft or withdrawn form can be submitted");
         }
         Long approverId = calculateFirstApprover(form);
-        String fromStatus = form.getStatus();
-        form.setStatus(PENDING);
+        ApprovalStatus fromStatus = form.getStatus();
+        form.setStatus(ApprovalStatus.PENDING);
         form.setCurrentApproverId(approverId);
         form.setSubmittedAt(LocalDateTime.now());
         formMapper.updateById(form);
-        addRecord(id, "SUBMIT", userId, fromStatus, PENDING, "submit approval");
+        addRecord(id, ApprovalAction.SUBMIT, userId, fromStatus, ApprovalStatus.PENDING, "submit approval");
         createTodo(approverId, form);
         return detail(id);
     }
@@ -101,12 +99,12 @@ public class ApprovalService {
     public ApprovalFormVO approve(Long userId, Long id, ApprovalActionRequest request) {
         ApprovalForm form = requireForm(id);
         ensureApprover(form, userId);
-        form.setStatus(APPROVED);
+        form.setStatus(ApprovalStatus.APPROVED);
         form.setCurrentApproverId(null);
         form.setCompletedAt(LocalDateTime.now());
         formMapper.updateById(form);
         completeTodo(userId, form.getId());
-        addRecord(id, "APPROVE", userId, PENDING, APPROVED, request.getComment());
+        addRecord(id, ApprovalAction.APPROVE, userId, ApprovalStatus.PENDING, ApprovalStatus.APPROVED, request.getComment());
         notifyUser(form.getApplicantUserId(), "Approval passed", form.getTitle() + " has been approved", form.getId());
         return detail(id);
     }
@@ -115,12 +113,12 @@ public class ApprovalService {
     public ApprovalFormVO reject(Long userId, Long id, ApprovalActionRequest request) {
         ApprovalForm form = requireForm(id);
         ensureApprover(form, userId);
-        form.setStatus(REJECTED);
+        form.setStatus(ApprovalStatus.REJECTED);
         form.setCurrentApproverId(null);
         form.setCompletedAt(LocalDateTime.now());
         formMapper.updateById(form);
         completeTodo(userId, form.getId());
-        addRecord(id, "REJECT", userId, PENDING, REJECTED, request.getComment());
+        addRecord(id, ApprovalAction.REJECT, userId, ApprovalStatus.PENDING, ApprovalStatus.REJECTED, request.getComment());
         notifyUser(form.getApplicantUserId(), "Approval rejected", form.getTitle() + " has been rejected", form.getId());
         return detail(id);
     }
@@ -129,17 +127,17 @@ public class ApprovalService {
     public ApprovalFormVO withdraw(Long userId, Long id, ApprovalActionRequest request) {
         ApprovalForm form = requireForm(id);
         ensureApplicant(form, userId);
-        if (!PENDING.equals(form.getStatus())) {
+        if (form.getStatus() != ApprovalStatus.PENDING) {
             throw new BusinessException("only pending form can be withdrawn");
         }
         Long approverId = form.getCurrentApproverId();
-        form.setStatus(WITHDRAWN);
+        form.setStatus(ApprovalStatus.WITHDRAWN);
         form.setCurrentApproverId(null);
         formMapper.updateById(form);
         if (approverId != null) {
             completeTodo(approverId, form.getId());
         }
-        addRecord(id, "WITHDRAW", userId, PENDING, WITHDRAWN, request.getComment());
+        addRecord(id, ApprovalAction.WITHDRAW, userId, ApprovalStatus.PENDING, ApprovalStatus.WITHDRAWN, request.getComment());
         return detail(id);
     }
 
@@ -147,15 +145,15 @@ public class ApprovalService {
     public ApprovalFormVO close(Long userId, Long id, ApprovalActionRequest request) {
         ApprovalForm form = requireForm(id);
         ensureApplicant(form, userId);
-        if (APPROVED.equals(form.getStatus())) {
+        if (form.getStatus() == ApprovalStatus.APPROVED) {
             throw new BusinessException("approved form cannot be closed");
         }
-        String fromStatus = form.getStatus();
-        form.setStatus(CLOSED);
+        ApprovalStatus fromStatus = form.getStatus();
+        form.setStatus(ApprovalStatus.CLOSED);
         form.setCurrentApproverId(null);
         form.setCompletedAt(LocalDateTime.now());
         formMapper.updateById(form);
-        addRecord(id, "CLOSE", userId, fromStatus, CLOSED, request.getComment());
+        addRecord(id, ApprovalAction.CLOSE, userId, fromStatus, ApprovalStatus.CLOSED, request.getComment());
         return detail(id);
     }
 
@@ -177,7 +175,7 @@ public class ApprovalService {
     public PageResult<ApprovalFormVO> myTodos(Long userId, ApprovalPageQuery query) {
         LambdaQueryWrapper<ApprovalForm> wrapper = baseQuery(query)
                 .eq(ApprovalForm::getCurrentApproverId, userId)
-                .eq(ApprovalForm::getStatus, PENDING)
+                .eq(ApprovalForm::getStatus, ApprovalStatus.PENDING)
                 .orderByDesc(ApprovalForm::getSubmittedAt);
         Page<ApprovalForm> page = formMapper.selectPage(new Page<>(query.getCurrent(), query.getSize()), wrapper);
         return PageResult.from(page.convert(this::toVO));
@@ -194,8 +192,10 @@ public class ApprovalService {
 
     private LambdaQueryWrapper<ApprovalForm> baseQuery(ApprovalPageQuery query) {
         return new LambdaQueryWrapper<ApprovalForm>()
-                .eq(StringUtils.hasText(query.getApprovalType()), ApprovalForm::getApprovalType, query.getApprovalType())
-                .eq(StringUtils.hasText(query.getStatus()), ApprovalForm::getStatus, query.getStatus())
+                .eq(StringUtils.hasText(query.getApprovalType()), ApprovalForm::getApprovalType,
+                        StringUtils.hasText(query.getApprovalType()) ? ApprovalType.of(query.getApprovalType()) : null)
+                .eq(StringUtils.hasText(query.getStatus()), ApprovalForm::getStatus,
+                        StringUtils.hasText(query.getStatus()) ? ApprovalStatus.of(query.getStatus()) : null)
                 .like(StringUtils.hasText(query.getKeyword()), ApprovalForm::getTitle, query.getKeyword());
     }
 
@@ -203,7 +203,7 @@ public class ApprovalService {
         OrgEmployee employee = employeeMapper.selectOne(new LambdaQueryWrapper<OrgEmployee>()
                 .eq(OrgEmployee::getUserId, userId)
                 .last("LIMIT 1"));
-        form.setApprovalType(request.getApprovalType());
+        form.setApprovalType(ApprovalType.of(request.getApprovalType()));
         form.setTitle(request.getTitle());
         form.setApplicantUserId(userId);
         form.setApplicantDeptId(employee == null ? null : employee.getDepartmentId());
@@ -214,7 +214,7 @@ public class ApprovalService {
     private Long calculateFirstApprover(ApprovalForm form) {
         OrgDepartment department = form.getApplicantDeptId() == null ? null : departmentMapper.selectById(form.getApplicantDeptId());
         Long leaderId = department == null ? null : department.getLeaderUserId();
-        if ("EXPENSE".equals(form.getApprovalType())
+        if (form.getApprovalType() == ApprovalType.EXPENSE
                 && form.getAmount() != null
                 && form.getAmount().compareTo(BigDecimal.valueOf(1000)) > 0) {
             Long financeId = firstUserByRole("FINANCE");
@@ -246,9 +246,9 @@ public class ApprovalService {
         MessageTodo todo = new MessageTodo();
         todo.setUserId(userId);
         todo.setTitle("Approval todo: " + form.getTitle());
-        todo.setBusinessType("APPROVAL");
+        todo.setBusinessType(BusinessType.APPROVAL);
         todo.setBusinessId(form.getId());
-        todo.setStatus("PENDING");
+        todo.setStatus(TodoStatus.PENDING);
         todoMapper.insert(todo);
         notifyUser(userId, "New approval todo", form.getTitle(), form.getId());
     }
@@ -256,12 +256,12 @@ public class ApprovalService {
     private void completeTodo(Long userId, Long formId) {
         MessageTodo todo = todoMapper.selectOne(new LambdaQueryWrapper<MessageTodo>()
                 .eq(MessageTodo::getUserId, userId)
-                .eq(MessageTodo::getBusinessType, "APPROVAL")
+                .eq(MessageTodo::getBusinessType, BusinessType.APPROVAL)
                 .eq(MessageTodo::getBusinessId, formId)
-                .eq(MessageTodo::getStatus, "PENDING")
+                .eq(MessageTodo::getStatus, TodoStatus.PENDING)
                 .last("LIMIT 1"));
         if (todo != null) {
-            todo.setStatus("DONE");
+            todo.setStatus(TodoStatus.DONE);
             todo.setCompletedTime(LocalDateTime.now());
             todoMapper.updateById(todo);
         }
@@ -272,13 +272,14 @@ public class ApprovalService {
         notice.setUserId(userId);
         notice.setTitle(title);
         notice.setContent(content);
-        notice.setBusinessType("APPROVAL");
+        notice.setBusinessType(BusinessType.APPROVAL);
         notice.setBusinessId(formId);
         notice.setReadStatus(0);
         noticeMapper.insert(notice);
     }
 
-    private void addRecord(Long formId, String action, Long operatorUserId, String fromStatus, String toStatus, String comment) {
+    private void addRecord(Long formId, ApprovalAction action, Long operatorUserId, ApprovalStatus fromStatus,
+                           ApprovalStatus toStatus, String comment) {
         ApprovalRecord record = new ApprovalRecord();
         record.setFormId(formId);
         record.setAction(action);
@@ -304,7 +305,7 @@ public class ApprovalService {
     }
 
     private void ensureApprover(ApprovalForm form, Long userId) {
-        if (!PENDING.equals(form.getStatus())) {
+        if (form.getStatus() != ApprovalStatus.PENDING) {
             throw new BusinessException("approval form is not pending");
         }
         if (!userId.equals(form.getCurrentApproverId())) {
@@ -318,7 +319,7 @@ public class ApprovalService {
         OrgDepartment department = form.getApplicantDeptId() == null ? null : departmentMapper.selectById(form.getApplicantDeptId());
         return ApprovalFormVO.builder()
                 .id(form.getId())
-                .approvalType(form.getApprovalType())
+                .approvalType(form.getApprovalType().getCode())
                 .title(form.getTitle())
                 .applicantUserId(form.getApplicantUserId())
                 .applicantName(applicant == null ? null : applicant.getRealName())
@@ -326,7 +327,7 @@ public class ApprovalService {
                 .applicantDeptName(department == null ? null : department.getDepartmentName())
                 .content(form.getContent())
                 .amount(form.getAmount())
-                .status(form.getStatus())
+                .status(form.getStatus().getCode())
                 .currentApproverId(form.getCurrentApproverId())
                 .currentApproverName(approver == null ? null : approver.getRealName())
                 .submittedAt(form.getSubmittedAt())
@@ -339,11 +340,11 @@ public class ApprovalService {
         return ApprovalRecordVO.builder()
                 .id(record.getId())
                 .formId(record.getFormId())
-                .action(record.getAction())
+                .action(record.getAction().getCode())
                 .operatorUserId(record.getOperatorUserId())
                 .operatorName(operator == null ? null : operator.getRealName())
-                .fromStatus(record.getFromStatus())
-                .toStatus(record.getToStatus())
+                .fromStatus(record.getFromStatus() == null ? null : record.getFromStatus().getCode())
+                .toStatus(record.getToStatus().getCode())
                 .comment(record.getComment())
                 .createTime(record.getCreateTime())
                 .build();

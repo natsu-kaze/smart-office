@@ -8,6 +8,8 @@ import com.natsukaze.smartoffice.ai.mapper.AiConversationMapper;
 import com.natsukaze.smartoffice.ai.mapper.AiMessageMapper;
 import com.natsukaze.smartoffice.ai.vo.AiApprovalDraftVO;
 import com.natsukaze.smartoffice.ai.vo.AiChatResponse;
+import com.natsukaze.smartoffice.common.enums.AiMessageRole;
+import com.natsukaze.smartoffice.common.enums.ApprovalType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,9 +25,9 @@ public class AiAssistantService {
     @Transactional
     public AiChatResponse chat(Long userId, AiChatRequest request) {
         AiConversation conversation = ensureConversation(userId, request.getConversationId(), request.getMessage());
-        saveMessage(conversation.getId(), "USER", request.getMessage());
+        saveMessage(conversation.getId(), AiMessageRole.USER, request.getMessage());
         String answer = "AI service is not configured yet. Fallback search/suggestion: " + request.getMessage();
-        saveMessage(conversation.getId(), "ASSISTANT", answer);
+        saveMessage(conversation.getId(), AiMessageRole.ASSISTANT, answer);
         return AiChatResponse.builder()
                 .conversationId(conversation.getId())
                 .answer(answer)
@@ -35,10 +37,10 @@ public class AiAssistantService {
 
     public AiApprovalDraftVO draftApproval(AiApprovalDraftRequest request) {
         String text = request.getText();
-        String type = text.contains("报销") ? "EXPENSE" : (text.contains("加班") ? "OVERTIME" : "LEAVE");
+        ApprovalType type = text.contains("报销") ? ApprovalType.EXPENSE : (text.contains("加班") ? ApprovalType.OVERTIME : ApprovalType.LEAVE);
         return AiApprovalDraftVO.builder()
-                .approvalType(type)
-                .title("AI Draft - " + type)
+                .approvalType(type.getCode())
+                .title("AI Draft - " + type.getCode())
                 .content("{\"source\":\"" + escapeJson(text) + "\"}")
                 .suggestion("Fallback draft generated without external model. Please review time, amount and reason before submitting.")
                 .build();
@@ -67,7 +69,7 @@ public class AiAssistantService {
         return conversation;
     }
 
-    private void saveMessage(Long conversationId, String role, String content) {
+    private void saveMessage(Long conversationId, AiMessageRole role, String content) {
         AiMessage message = new AiMessage();
         message.setConversationId(conversationId);
         message.setRole(role);

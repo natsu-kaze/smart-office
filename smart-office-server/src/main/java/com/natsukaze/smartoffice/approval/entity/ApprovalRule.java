@@ -2,6 +2,7 @@ package com.natsukaze.smartoffice.approval.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.natsukaze.smartoffice.common.entity.BaseEntity;
+import com.natsukaze.smartoffice.common.enums.ApprovalType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -12,7 +13,7 @@ import java.math.BigDecimal;
 @TableName("approval_rule")
 public class ApprovalRule extends BaseEntity {
 
-    private String approvalType;
+    private ApprovalType approvalType;
 
     private BigDecimal amountLimit;
 

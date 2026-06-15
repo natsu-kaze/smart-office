@@ -2,6 +2,7 @@ package com.natsukaze.smartoffice.ai.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.natsukaze.smartoffice.common.entity.BaseEntity;
+import com.natsukaze.smartoffice.common.enums.AiMessageRole;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -12,7 +13,7 @@ public class AiMessage extends BaseEntity {
 
     private Long conversationId;
 
-    private String role;
+    private AiMessageRole role;
 
     private String content;
 

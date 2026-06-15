@@ -2,6 +2,7 @@ package com.natsukaze.smartoffice.search.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.natsukaze.smartoffice.common.entity.BaseEntity;
+import com.natsukaze.smartoffice.common.enums.DocumentStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -20,7 +21,7 @@ public class PolicyDocument extends BaseEntity {
 
     private String documentVersion;
 
-    private String status;
+    private DocumentStatus status;
 
     private Long publisherId;
 

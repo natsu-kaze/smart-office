@@ -2,6 +2,8 @@ package com.natsukaze.smartoffice.approval.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.natsukaze.smartoffice.common.entity.BaseEntity;
+import com.natsukaze.smartoffice.common.enums.ApprovalStatus;
+import com.natsukaze.smartoffice.common.enums.ApprovalType;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -13,7 +15,7 @@ import java.time.LocalDateTime;
 @TableName("approval_form")
 public class ApprovalForm extends BaseEntity {
 
-    private String approvalType;
+    private ApprovalType approvalType;
 
     private String title;
 
@@ -25,7 +27,7 @@ public class ApprovalForm extends BaseEntity {
 
     private BigDecimal amount;
 
-    private String status;
+    private ApprovalStatus status;
 
     private Long currentApproverId;
 

@@ -3,6 +3,8 @@ package com.natsukaze.smartoffice.message.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.natsukaze.smartoffice.common.core.PageResult;
+import com.natsukaze.smartoffice.common.enums.BusinessType;
+import com.natsukaze.smartoffice.common.enums.TodoStatus;
 import com.natsukaze.smartoffice.common.exception.BusinessException;
 import com.natsukaze.smartoffice.message.dto.MessagePageQuery;
 import com.natsukaze.smartoffice.message.dto.TodoPageQuery;
@@ -23,8 +25,6 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class MessageService {
 
-    private static final String TODO_DONE = "DONE";
-
     private final MessageNoticeMapper noticeMapper;
 
     private final MessageTodoMapper todoMapper;
@@ -33,7 +33,8 @@ public class MessageService {
         LambdaQueryWrapper<MessageNotice> wrapper = new LambdaQueryWrapper<MessageNotice>()
                 .eq(MessageNotice::getUserId, userId)
                 .eq(query.getReadStatus() != null, MessageNotice::getReadStatus, query.getReadStatus())
-                .eq(StringUtils.hasText(query.getBusinessType()), MessageNotice::getBusinessType, query.getBusinessType())
+                .eq(StringUtils.hasText(query.getBusinessType()), MessageNotice::getBusinessType,
+                        BusinessType.ofNullable(query.getBusinessType()))
                 .orderByDesc(MessageNotice::getCreateTime);
         Page<MessageNotice> page = noticeMapper.selectPage(new Page<>(query.getCurrent(), query.getSize()), wrapper);
         return PageResult.from(page.convert(this::toNoticeVO));
@@ -62,8 +63,10 @@ public class MessageService {
     public PageResult<MessageTodoVO> myTodos(Long userId, TodoPageQuery query) {
         LambdaQueryWrapper<MessageTodo> wrapper = new LambdaQueryWrapper<MessageTodo>()
                 .eq(MessageTodo::getUserId, userId)
-                .eq(StringUtils.hasText(query.getStatus()), MessageTodo::getStatus, query.getStatus())
-                .eq(StringUtils.hasText(query.getBusinessType()), MessageTodo::getBusinessType, query.getBusinessType())
+                .eq(StringUtils.hasText(query.getStatus()), MessageTodo::getStatus,
+                        TodoStatus.ofNullable(query.getStatus()))
+                .eq(StringUtils.hasText(query.getBusinessType()), MessageTodo::getBusinessType,
+                        BusinessType.ofNullable(query.getBusinessType()))
                 .orderByDesc(MessageTodo::getCreateTime);
         Page<MessageTodo> page = todoMapper.selectPage(new Page<>(query.getCurrent(), query.getSize()), wrapper);
         return PageResult.from(page.convert(this::toTodoVO));
@@ -72,13 +75,13 @@ public class MessageService {
     public Long todoCount(Long userId) {
         return todoMapper.selectCount(new LambdaQueryWrapper<MessageTodo>()
                 .eq(MessageTodo::getUserId, userId)
-                .eq(MessageTodo::getStatus, "PENDING"));
+                .eq(MessageTodo::getStatus, TodoStatus.PENDING));
     }
 
     @Transactional
     public void completeTodo(Long userId, Long id) {
         MessageTodo todo = requireTodo(userId, id);
-        todo.setStatus(TODO_DONE);
+        todo.setStatus(TodoStatus.DONE);
         todo.setCompletedTime(LocalDateTime.now());
         todoMapper.updateById(todo);
     }
@@ -110,7 +113,7 @@ public class MessageService {
                 .id(notice.getId())
                 .title(notice.getTitle())
                 .content(notice.getContent())
-                .businessType(notice.getBusinessType())
+                .businessType(notice.getBusinessType() == null ? null : notice.getBusinessType().getCode())
                 .businessId(notice.getBusinessId())
                 .readStatus(notice.getReadStatus())
                 .readTime(notice.getReadTime())
@@ -122,9 +125,9 @@ public class MessageService {
         return MessageTodoVO.builder()
                 .id(todo.getId())
                 .title(todo.getTitle())
-                .businessType(todo.getBusinessType())
+                .businessType(todo.getBusinessType() == null ? null : todo.getBusinessType().getCode())
                 .businessId(todo.getBusinessId())
-                .status(todo.getStatus())
+                .status(todo.getStatus() == null ? null : todo.getStatus().getCode())
                 .dueTime(todo.getDueTime())
                 .completedTime(todo.getCompletedTime())
                 .createTime(todo.getCreateTime())
