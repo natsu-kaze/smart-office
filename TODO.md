@@ -3,7 +3,7 @@
 ## 0. 项目初始化
 
 * [x] 创建后端项目 `smart-office-server`
-* [ ] 创建前端项目 `smart-office-web`
+* [x] 创建前端项目 `smart-office-web`
 * [x] 创建 `docker` 目录
 * [x] 创建 `docs` 目录
 * [x] 添加 `.gitignore`
@@ -38,8 +38,8 @@
 
 ## 2. Docker 依赖环境
 
-* [ ] 编写 MySQL docker-compose 配置
-* [ ] 编写 Redis docker-compose 配置
+* [x] 编写 MySQL docker-compose 配置
+* [x] 编写 Redis docker-compose 配置
 * [ ] 编写 RabbitMQ docker-compose 配置
 * [ ] 编写 Elasticsearch docker-compose 配置
 * [ ] 编写 MinIO docker-compose 配置
@@ -376,15 +376,15 @@
 
 ### 基础页面
 
-* [ ] 登录页
-* [ ] 首页工作台
+* [x] 登录页
+* [x] 首页工作台
 * [ ] 个人中心
 * [ ] 403 页面
 * [ ] 404 页面
 
 ### 系统管理
 
-* [ ] 用户管理页
+* [x] 用户管理页
 * [ ] 角色管理页
 * [ ] 菜单管理页
 
@@ -393,20 +393,20 @@
 * [ ] 部门管理页
 * [ ] 岗位管理页
 * [ ] 员工管理页
-* [ ] 组织架构树组件
+* [x] 组织架构树组件
 
 ### 审批中心
 
-* [ ] 创建审批页
-* [ ] 我的申请页
-* [ ] 我的待办页
+* [x] 创建审批页
+* [x] 我的申请页
+* [x] 我的待办页
 * [ ] 审批详情页
 * [ ] 审批时间线组件
 * [ ] 审批操作弹窗
 
 ### 考勤管理
 
-* [ ] 今日打卡页
+* [x] 今日打卡页
 * [ ] 我的考勤页
 * [ ] 部门考勤页
 * [ ] 月度统计页
