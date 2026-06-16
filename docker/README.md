@@ -1,6 +1,6 @@
 # Docker 依赖环境
 
-第一阶段只启动 MySQL 和 Redis。
+第一阶段启动 MySQL、Redis 和 Nacos。
 
 ```powershell
 cd docker
@@ -13,12 +13,20 @@ docker compose up -d
 |---|---:|---:|
 | MySQL | 3306 | 3307 |
 | Redis | 6379 | 6379 |
+| Nacos | 8848 | 8848 |
+| Nacos gRPC | 9848 | 9848 |
 
 后端连接 Docker MySQL 时使用：
 
 ```powershell
 $env:MYSQL_PORT='3307'
 $env:MYSQL_PASSWORD='123456'
+```
+
+微服务本地注册到 Nacos 时使用：
+
+```powershell
+$env:NACOS_SERVER_ADDR='127.0.0.1:8848'
 ```
 
 MySQL 首次启动会自动执行：

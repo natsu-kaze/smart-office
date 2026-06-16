@@ -4,7 +4,7 @@
 
 本项目是一个面向企业内部协同办公场景的审批与考勤管理系统，参考钉钉、飞书、企业微信等办公平台中的审批、考勤、组织架构和待办通知能力，设计并实现员工管理、部门管理、角色权限、请假/加班/报销审批、考勤打卡、消息待办、文件附件、制度文档检索与 AI 办公助手等功能。
 
-项目采用后端优先的开发方式，第一阶段使用 Spring Boot 单体模块化架构快速实现核心业务闭环，后续逐步演进为 Spring Cloud Alibaba 微服务架构。
+项目采用后端优先的开发方式，当前已进入 Spring Cloud Alibaba 微服务演进阶段。`smart-office-server` 保留为已有业务基线，新建 `smart-office-services` 下的网关与业务服务骨架，后续按模块逐步迁移业务代码。
 
 ## 项目定位
 
@@ -38,7 +38,7 @@
 * Knife4j / Swagger
 * Docker / Docker Compose
 
-### 后续微服务演进技术
+### 微服务技术
 
 * Spring Cloud Alibaba
 * Nacos
@@ -56,6 +56,11 @@
 * Axios
 
 前端优先采用后台管理模板风格，重点完成业务展示，不追求复杂 UI。
+
+## 架构说明
+
+* 微服务工程结构、端口、网关路由和迁移顺序见 [docs/microservices-architecture.md](docs/microservices-architecture.md)。
+* 当前 `smart-office-server` 仍保留为业务基线，`smart-office-services` 用于承载后续拆分后的独立服务。
 
 ## 核心功能
 

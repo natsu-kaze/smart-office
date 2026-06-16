@@ -42,6 +42,26 @@ services:
       timeout: 5s
       retries: 10
 
+  nacos:
+    image: nacos/nacos-server:v2.3.2
+    container_name: smart-office-nacos
+    restart: unless-stopped
+    environment:
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "false"
+      JVM_XMS: 256m
+      JVM_XMX: 512m
+      JVM_XMN: 128m
+      TZ: Asia/Shanghai
+    ports:
+      - "${NACOS_HOST_PORT:-8848}:8848"
+      - "${NACOS_GRPC_HOST_PORT:-9848}:9848"
+    volumes:
+      - smart-office-nacos-data:/home/nacos/data
+      - smart-office-nacos-logs:/home/nacos/logs
+
 volumes:
   smart-office-mysql-data:
   smart-office-redis-data:
+  smart-office-nacos-data:
+  smart-office-nacos-logs:

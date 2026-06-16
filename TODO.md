@@ -473,15 +473,15 @@ finance / 123456
 
 ### P0：必须完成
 
-* [ ] 登录认证
-* [ ] 用户管理
-* [ ] 组织架构
-* [ ] 审批申请
-* [ ] 审批处理
-* [ ] 审批记录
-* [ ] 考勤打卡
-* [ ] 我的待办
-* [ ] 基础前端页面
+* [x] 登录认证
+* [x] 用户管理
+* [x] 组织架构
+* [x] 审批申请
+* [x] 审批处理
+* [x] 审批记录
+* [x] 考勤打卡
+* [x] 我的待办
+* [x] 基础前端页面
 
 ### P1：简历加分
 
@@ -497,9 +497,9 @@ finance / 123456
 
 * [ ] Elasticsearch 搜索
 * [ ] 制度问答 RAG
-* [ ] Gateway
-* [ ] Nacos
-* [ ] OpenFeign
+* [x] Gateway
+* [x] Nacos
+* [x] OpenFeign
 * [ ] 微服务拆分
 * [ ] Sentinel 限流熔断
 
@@ -517,3 +517,22 @@ finance / 123456
 10. 最后接入 AI 办公助手。
 
 不要一开始就做微服务拆分，也不要一开始就接入全部中间件。
+
+## 17. 当前进度与下一步
+
+### 已完成 MVP
+
+* [x] 后端单体模块化结构已完成，包含认证、用户、组织、审批、考勤、消息待办、文件记录、制度文档、AI 占位模块
+* [x] 微服务父工程与服务骨架已完成，包含 common、api、gateway、auth、system、org、approval、attendance、message、file、search、ai 模块
+* [x] 审批状态机、考勤状态、业务类型已整理为枚举
+* [x] MySQL / Redis / Nacos Docker Compose 配置已完成，MySQL 默认密码 `123456`
+* [x] 前端 `smart-office-web` 已初始化，完成登录、工作台、用户列表、组织架构、审批中心、今日考勤基础页面
+* [x] 已加入 Playwright 浏览器冒烟自测，覆盖登录、主页面访问、新建审批弹窗、考勤按钮可见性
+
+### 下一步建议
+
+1. 先迁 system-service：拆出用户、角色、菜单实体、Mapper、Service、Controller，并补内部用户查询 Feign 实现。
+2. 再迁 auth-service：拆出登录认证、JWT、安全过滤器，并通过 Feign 调 system-service 获取用户信息。
+3. 接着迁 org-service：拆公司、部门、岗位、员工，并处理与 system-service 用户信息的依赖。
+4. 然后迁 approval / attendance / message：优先跑通审批提交、待办生成、考勤打卡这条主链路。
+5. 业务服务迁完后，前端代理切到 gateway:9000，再补完整 Playwright 网关冒烟测试。
