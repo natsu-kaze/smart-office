@@ -17,4 +17,16 @@ public record Result<T>(int code, String message, T data) {
     public static Result<Void> fail(int code, String message) {
         return new Result<>(code, message, null);
     }
+
+    public static Result<Void> failure(ErrorCode errorCode) {
+        return fail(errorCode);
+    }
+
+    public static Result<Void> failure(ErrorCode errorCode, String message) {
+        return fail(errorCode.getCode(), message);
+    }
+
+    public static Result<Void> failure(int code, String message) {
+        return fail(code, message);
+    }
 }

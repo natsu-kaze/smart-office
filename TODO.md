@@ -40,23 +40,23 @@
 
 * [x] 编写 MySQL docker-compose 配置
 * [x] 编写 Redis docker-compose 配置
-* [ ] 编写 RabbitMQ docker-compose 配置
-* [ ] 编写 Elasticsearch docker-compose 配置
-* [ ] 编写 MinIO docker-compose 配置
-* [ ] 编写 XXL-JOB Admin docker-compose 配置
+* [x] 编写 RabbitMQ docker-compose 配置
+* [x] 编写 Elasticsearch docker-compose 配置
+* [x] 编写 MinIO docker-compose 配置
+* [x] 编写 XXL-JOB Admin docker-compose 配置
 * [x] 准备数据库初始化 SQL
 * [x] 准备测试数据 SQL
 
 第一阶段可以只启动：
 
 * [ ] MySQL
-* [ ] Redis
+* [x] Redis
 
 后续再接入：
 
 * [ ] RabbitMQ
-* [ ] Elasticsearch
-* [ ] MinIO
+* [x] Elasticsearch
+* [x] MinIO
 * [ ] XXL-JOB
 
 ## 3. 用户与认证模块
@@ -525,7 +525,8 @@ finance / 123456
 * [x] 后端单体模块化结构已完成，包含认证、用户、组织、审批、考勤、消息待办、文件记录、制度文档、AI 占位模块
 * [x] 微服务父工程与服务骨架已完成，包含 common、api、gateway、auth、system、org、approval、attendance、message、file、search、ai 模块
 * [x] 审批状态机、考勤状态、业务类型已整理为枚举
-* [x] MySQL / Redis / Nacos Docker Compose 配置已完成，MySQL 默认密码 `123456`
+* [x] MySQL / Redis / Nacos / RabbitMQ / Elasticsearch / MinIO / XXL-JOB Docker Compose 配置已完成，MySQL 默认密码 `123456`
+* [ ] 统一端口实测启动完成：当前 Redis / Nacos / Elasticsearch / MinIO 已启动，MySQL `3306` 与 RabbitMQ `5672` 仍被宿主机进程占用
 * [x] 前端 `smart-office-web` 已初始化，完成登录、工作台、用户列表、组织架构、审批中心、今日考勤基础页面
 * [x] 已加入 Playwright 浏览器冒烟自测，覆盖登录、主页面访问、新建审批弹窗、考勤按钮可见性
 
@@ -536,3 +537,20 @@ finance / 123456
 3. 接着迁 org-service：拆公司、部门、岗位、员工，并处理与 system-service 用户信息的依赖。
 4. 然后迁 approval / attendance / message：优先跑通审批提交、待办生成、考勤打卡这条主链路。
 5. 业务服务迁完后，前端代理切到 gateway:9000，再补完整 Playwright 网关冒烟测试。
+## 18. 微服务版本迁移进度
+
+* [x] common 已补齐统一返回、分页、业务异常、全局异常处理、BaseEntity、MyBatis-Plus 分页/乐观锁/自动填充配置
+* [x] api 已补齐 system-service 用户认证 Feign 契约，支持按用户名查询认证用户、按 ID 查询当前用户、更新最后登录时间
+* [x] system-service 已迁移用户认证所需的 sys_user / sys_role / sys_user_role 实体、Mapper、内部 Service 与 Controller
+* [x] auth-service 已迁移登录、JWT、Spring Security 过滤器、当前用户、退出接口，并通过 Feign 调 system-service 获取用户信息
+* [x] 所有启用 OpenFeign 的业务服务已补 `spring-cloud-starter-loadbalancer`，避免运行时报缺少负载均衡客户端
+* [x] 已通过 `mvn -DskipTests compile` 与 `mvn test`
+* [x] 已用 JDK 21 临时启动验证 auth-service，`/actuator/health` 返回 UP
+* [ ] system-service 数据库联调：服务可启动，当前 `/actuator/health` 因 Docker/MySQL 未连通返回 DOWN
+* [ ] gateway + Nacos + MySQL 完整登录链路联调
+
+下一步：
+
+1. 先恢复当前终端 Docker CLI 与 Docker Desktop 的连接，启动 MySQL / Nacos。
+2. 启动 system-service、auth-service、gateway，验证 `/api/auth/login` 能通过 gateway 登录。
+3. 继续迁移 org-service，补公司、部门、岗位、员工基础查询与管理接口。

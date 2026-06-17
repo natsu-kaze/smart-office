@@ -19,3 +19,9 @@ management:
     web:
       exposure:
         include: health,info
+
+smart-office:
+  jwt:
+    issuer: smart-office
+    secret: ${JWT_SECRET:smart-office-jwt-secret-please-change-32bytes}
+    expiration: ${JWT_EXPIRATION:86400000}

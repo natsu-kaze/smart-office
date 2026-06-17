@@ -7,7 +7,10 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @EnableFeignClients(basePackages = "com.natsukaze.smartoffice.api")
 @EnableDiscoveryClient
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {
+        "com.natsukaze.smartoffice.authservice",
+        "com.natsukaze.smartoffice.common.handler"
+})
 public class AuthServiceApplication {
 
     public static void main(String[] args) {

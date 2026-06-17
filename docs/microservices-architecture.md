@@ -31,7 +31,7 @@ smart-office
 
 | 服务 | 端口 |
 |---|---:|
-| gateway | 9000 |
+| gateway | 8000 |
 | auth-service | 9101 |
 | system-service | 9102 |
 | org-service | 9103 |
@@ -62,7 +62,7 @@ smart-office
 
    ```powershell
    cd docker
-   docker compose up -d mysql redis nacos
+   docker compose up -d mysql redis nacos rabbitmq elasticsearch minio xxl-job-admin
    ```
 
 2. 启动网关：
@@ -82,6 +82,7 @@ smart-office
 4. 前端切到网关代理：
 
    ```powershell
+   # 网关默认 http://localhost:8000
    cd smart-office-web
    npm run dev -- --mode microservice
    ```
@@ -131,3 +132,19 @@ Invoke-WebRequest -UseBasicParsing http://127.0.0.1:9102/internal/health
 ```
 
 说明：完整联调需要先启动 `docker compose up -d nacos`。如果只是单服务本地健康检查，可以按上面的命令临时关闭注册发现。
+## 当前迁移状态
+
+已迁移到微服务版本的能力：
+
+* common：统一返回、分页、业务异常、全局异常、BaseEntity、MyBatis-Plus 配置。
+* api：system-service 用户认证 Feign 契约。
+* system-service：用户认证所需的用户、角色、用户角色实体、Mapper、内部查询与最后登录时间更新。
+* auth-service：登录、JWT、Spring Security、当前用户、退出接口，通过 Feign 调用 system-service。
+* service runtime：所有启用 OpenFeign 的业务服务已补充 Spring Cloud LoadBalancer。
+
+本地验证结果：
+
+* `mvn -DskipTests compile` 通过。
+* `mvn test` 通过。
+* auth-service 使用 JDK 21 临时启动，`/actuator/health` 返回 `UP`。
+* system-service 可启动，当前因 Docker/MySQL 在本终端不可达，`/actuator/health` 返回 `DOWN`，待数据库联调。

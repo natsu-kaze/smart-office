@@ -3,11 +3,12 @@ package com.natsukaze.smartoffice.common.core;
 public enum ErrorCode {
 
     SUCCESS(0, "success"),
-    BAD_REQUEST(400, "请求参数错误"),
-    UNAUTHORIZED(401, "未认证或登录已过期"),
-    FORBIDDEN(403, "无访问权限"),
-    NOT_FOUND(404, "资源不存在"),
-    INTERNAL_ERROR(500, "系统异常");
+    BAD_REQUEST(400, "bad request"),
+    UNAUTHORIZED(401, "unauthorized"),
+    FORBIDDEN(403, "forbidden"),
+    NOT_FOUND(404, "not found"),
+    BUSINESS_ERROR(1000, "business error"),
+    SYSTEM_ERROR(500, "system error");
 
     private final int code;
     private final String message;

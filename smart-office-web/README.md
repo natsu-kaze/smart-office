@@ -30,7 +30,7 @@ npm run dev -- --mode microservice
 微服务模式下 `/api` 会转发到：
 
 ```text
-http://localhost:9000
+http://localhost:8000
 ```
 
 测试账号：
