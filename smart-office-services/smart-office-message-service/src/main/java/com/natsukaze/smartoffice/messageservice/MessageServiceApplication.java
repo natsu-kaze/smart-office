@@ -7,7 +7,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @EnableFeignClients(basePackages = "com.natsukaze.smartoffice.api")
 @EnableDiscoveryClient
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.natsukaze.smartoffice")
 public class MessageServiceApplication {
 
     public static void main(String[] args) {

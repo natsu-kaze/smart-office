@@ -2,6 +2,7 @@ package com.natsukaze.smartoffice.orgservice.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.natsukaze.smartoffice.api.org.dto.OrgEmployeeDTO;
 import com.natsukaze.smartoffice.api.system.client.SystemUserClient;
 import com.natsukaze.smartoffice.api.system.dto.CurrentUserDTO;
 import com.natsukaze.smartoffice.common.core.ErrorCode;
@@ -230,6 +231,22 @@ public class OrgService {
                 .stream()
                 .map(this::toEmployeeVO)
                 .toList();
+    }
+
+    public OrgEmployeeDTO getEmployeeByUserId(Long userId) {
+        OrgEmployee employee = employeeMapper.selectOne(new LambdaQueryWrapper<OrgEmployee>()
+                .eq(OrgEmployee::getUserId, userId)
+                .last("LIMIT 1"));
+        if (employee == null) {
+            throw new BusinessException("employee not found");
+        }
+        OrgDepartment department = departmentMapper.selectById(employee.getDepartmentId());
+        return new OrgEmployeeDTO(
+                employee.getId(),
+                employee.getUserId(),
+                employee.getDepartmentId(),
+                department == null ? null : department.getDepartmentName(),
+                department == null ? null : department.getLeaderUserId());
     }
 
     @Transactional

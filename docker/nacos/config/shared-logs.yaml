@@ -1,0 +1,4 @@
+logging:
+  level:
+    com.natsukaze.smartoffice: ${SMART_OFFICE_LOG_LEVEL:debug}
+    org.springframework.cloud.openfeign: ${FEIGN_LOG_LEVEL:info}

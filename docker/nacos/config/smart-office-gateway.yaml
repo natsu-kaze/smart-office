@@ -1,0 +1,50 @@
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: auth-service
+          uri: lb://smart-office-auth-service
+          predicates:
+            - Path=/api/auth/**
+        - id: system-service
+          uri: lb://smart-office-system-service
+          predicates:
+            - Path=/api/system/**
+        - id: org-service
+          uri: lb://smart-office-org-service
+          predicates:
+            - Path=/api/org/**
+        - id: approval-service
+          uri: lb://smart-office-approval-service
+          predicates:
+            - Path=/api/approvals/**
+        - id: attendance-service
+          uri: lb://smart-office-attendance-service
+          predicates:
+            - Path=/api/attendance/**
+        - id: message-service
+          uri: lb://smart-office-message-service
+          predicates:
+            - Path=/api/messages/**
+        - id: file-service
+          uri: lb://smart-office-file-service
+          predicates:
+            - Path=/api/files/**
+        - id: search-service
+          uri: lb://smart-office-search-service
+          predicates:
+            - Path=/api/policies/**
+        - id: ai-service
+          uri: lb://smart-office-ai-service
+          predicates:
+            - Path=/api/ai/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway

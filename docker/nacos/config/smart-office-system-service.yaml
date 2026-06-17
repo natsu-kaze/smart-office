@@ -1,0 +1,3 @@
+smart-office:
+  service:
+    module: system

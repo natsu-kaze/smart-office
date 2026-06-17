@@ -157,3 +157,61 @@ Invoke-WebRequest -UseBasicParsing http://127.0.0.1:9102/internal/health
 * 当前终端无权限启动 `com.docker.service`。
 * `5672` 被本机 `erl.exe` 占用，后续 RabbitMQ 容器启动前需要释放。
 * PATH 中默认 `java` 为 JDK 11，运行 Spring Boot 3 服务需使用 JDK 17/21。
+
+## Nacos 配置与独立数据库
+
+微服务配置参照 `D:\my_project\tjxt\tjxt-javaai02` 的结构拆分：
+
+* `application.yml`：只保留端口、服务名、服务私有库名。
+* `application-local.yml`：只保留 Nacos 地址、账号和 `spring.config.import`。
+* `docker/nacos/config/*.yaml`：保存共享配置与服务私有配置，由 Docker Compose 的 `nacos-config-importer` 自动发布。
+
+共享配置：
+
+* `shared-spring.yaml`：注册发现自动注册、Actuator 暴露。
+* `shared-mybatis.yaml`：MySQL 数据源、MyBatis-Plus 公共配置，数据库名来自 `${smart-office.jdbc.database}`。
+* `shared-feign.yaml`：OpenFeign 超时配置。
+* `shared-redis.yaml`：Redis 连接配置。
+* `shared-mq.yaml`：RabbitMQ 连接配置。
+* `shared-logs.yaml`：日志级别。
+
+微服务数据库：
+
+| 服务 | 数据库 |
+| --- | --- |
+| system-service | `smart_office_system` |
+| org-service | `smart_office_org` |
+| approval-service | `smart_office_approval` |
+| attendance-service | `smart_office_attendance` |
+| message-service | `smart_office_message` |
+| file-service | `smart_office_file` |
+| search-service | `smart_office_search` |
+| ai-service | `smart_office_ai` |
+
+Docker 当前验证：
+
+* `docker compose -f docker/docker-compose.yml config` 通过。
+* MySQL、Redis、Nacos、RabbitMQ、Elasticsearch、MinIO、XXL-JOB Admin 已启动。
+* 已手动验证 Nacos 配置发布成功，可读取 `shared-mybatis.yaml`。
+* 已验证 system-service 从 Nacos 读取共享 MyBatis 配置，连接 `smart_office_system`，`/actuator/health` 返回 `UP`。
+
+当前 Windows 端口说明：
+
+* `8751-8950` 被 Windows 排除，Nacos 默认 `8848` 无法绑定，因此本机使用 `8951`。
+* Nacos 2.x 客户端需要 gRPC 端口等于 HTTP 端口 + 1000，因此本机使用 `9951 -> 9848`。
+* 宿主 Redis/RabbitMQ 服务未被当前 shell 停止，Docker 版临时映射为 Redis `6380`、RabbitMQ `5673`。
+* Elasticsearch transport `9300` 在 Windows 排除段内，本机映射为 `9459 -> 9300`。
+
+本机启动业务服务时可使用：
+
+```powershell
+$env:NACOS_SERVER_ADDR='127.0.0.1:8951'
+$env:REDIS_PORT='6380'
+$env:RABBITMQ_PORT='5673'
+```
+
+下一步：
+
+1. 补 gateway JWT 校验与 `X-User-Id` 透传。
+2. 迁移 attendance-service 到 `smart_office_attendance`。
+3. 继续迁移 file/search/ai，并补完整网关联调。

@@ -2,34 +2,11 @@ server:
   port: 9102
 
 spring:
+  profiles:
+    active: local
   application:
     name: smart-office-system-service
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:smart_office}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: ${MYSQL_USERNAME:root}
-    password: ${MYSQL_PASSWORD:123456}
-  cloud:
-    nacos:
-      discovery:
-        enabled: ${NACOS_DISCOVERY_ENABLED:true}
-        register-enabled: ${NACOS_REGISTER_ENABLED:true}
-        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
-    service-registry:
-      auto-registration:
-        enabled: ${SERVICE_REGISTRY_AUTO_REGISTRATION_ENABLED:true}
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-
-mybatis-plus:
-  configuration:
-    map-underscore-to-camel-case: true
-  global-config:
-    db-config:
-      logic-delete-field: deleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
+smart-office:
+  jdbc:
+    database: smart_office_system

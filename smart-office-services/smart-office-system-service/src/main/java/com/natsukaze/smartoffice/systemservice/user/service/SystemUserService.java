@@ -55,6 +55,19 @@ public class SystemUserService {
                 listRoleCodes(user.getId()));
     }
 
+    public CurrentUserDTO getFirstUserByRole(String roleCode) {
+        SysRole role = sysRoleMapper.selectOne(new LambdaQueryWrapper<SysRole>()
+                .eq(SysRole::getRoleCode, roleCode)
+                .last("LIMIT 1"));
+        if (role == null) {
+            return null;
+        }
+        SysUserRole relation = sysUserRoleMapper.selectOne(new LambdaQueryWrapper<SysUserRole>()
+                .eq(SysUserRole::getRoleId, role.getId())
+                .last("LIMIT 1"));
+        return relation == null ? null : getCurrentUser(relation.getUserId());
+    }
+
     @Transactional
     public void updateLastLoginTime(Long userId) {
         SysUser user = getRequiredUser(userId);

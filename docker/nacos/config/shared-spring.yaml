@@ -1,0 +1,11 @@
+spring:
+  cloud:
+    service-registry:
+      auto-registration:
+        enabled: ${SERVICE_REGISTRY_AUTO_REGISTRATION_ENABLED:true}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -573,3 +573,28 @@ finance / 123456
 * 当前终端无权限启动 `com.docker.service`。
 * `5672` 当前被本机 `erl.exe` 占用，后续 RabbitMQ 容器仍需释放端口。
 * 命令行 `java` 默认仍是 JDK 11，Maven 使用 JDK 21；运行 Spring Boot 3 服务需显式使用 JDK 17/21。
+
+## 20. 微服务独立库与 Nacos 配置进度
+
+* [x] 参照 `D:\my_project\tjxt\tjxt-javaai02` 的服务写法，将微服务配置拆为 `application.yml` + `application-local.yml`。
+* [x] 各服务 `application.yml` 只保留端口、服务名和服务私有库名，公共配置改由 Nacos 导入。
+* [x] 所有微服务已接入 `spring-cloud-starter-alibaba-nacos-config`。
+* [x] 已新增 Nacos 共享配置文件：`shared-spring.yaml`、`shared-logs.yaml`、`shared-feign.yaml`、`shared-mybatis.yaml`、`shared-redis.yaml`、`shared-mq.yaml`。
+* [x] 已新增 Nacos 服务私有配置文件：gateway 路由、auth JWT、各业务服务模块占位配置。
+* [x] Docker Compose 已增加 `nacos-config-importer`，Nacos 健康后自动发布 `docker/nacos/config/*.yaml`。
+* [x] MySQL 已拆分微服务库：`smart_office_system`、`smart_office_org`、`smart_office_approval`、`smart_office_attendance`、`smart_office_message`、`smart_office_file`、`smart_office_search`、`smart_office_ai`。
+* [x] 已新增 `docker/mysql/init/04-smart-office-microservices.sql`，新数据库卷会自动初始化微服务分库；旧卷可手动执行该脚本补库。
+* [x] 已通过 `docker compose -f docker/docker-compose.yml config`。
+* [x] 已通过 `mvn -DskipTests compile` 与 `mvn test`。
+* [x] Docker 中间件已启动：MySQL、Redis、Nacos、RabbitMQ、Elasticsearch、MinIO、XXL-JOB Admin。
+* [x] 已验证 system-service 从 Nacos 加载 `shared-mybatis.yaml`，连接 `smart_office_system`，`/actuator/health` 返回 UP。
+* [ ] 由于 Windows 排除端口和宿主服务占用，当前 Docker 宿主端口临时为：Nacos `8951/9951`、Redis `6380`、RabbitMQ `5673`、Elasticsearch transport `9459`。
+* [ ] gateway JWT 校验与 `X-User-Id` 透传仍待补齐，当前业务服务用户身份 Header 仍是临时方案。
+* [ ] attendance-service / file-service / search-service / ai-service 仍需继续迁移业务实体、Mapper、Service、Controller。
+
+下一步：
+
+1. 补 gateway JWT 解析与 `X-User-Id` 透传，让 approval/message/org 等接口能通过网关真实带当前用户。
+2. 迁移 attendance-service：考勤规则、打卡、个人/部门记录查询，并切到 `smart_office_attendance`。
+3. 迁移 file-service 与 MinIO 上传接口，再迁 search-service 的制度文档基础查询。
+4. 最后联调 gateway -> auth/system/org/approval/message 的登录、审批提交、待办生成、审批通知链路。

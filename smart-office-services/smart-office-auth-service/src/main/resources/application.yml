@@ -2,26 +2,7 @@ server:
   port: 9101
 
 spring:
+  profiles:
+    active: local
   application:
     name: smart-office-auth-service
-  cloud:
-    nacos:
-      discovery:
-        enabled: ${NACOS_DISCOVERY_ENABLED:true}
-        register-enabled: ${NACOS_REGISTER_ENABLED:true}
-        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
-    service-registry:
-      auto-registration:
-        enabled: ${SERVICE_REGISTRY_AUTO_REGISTRATION_ENABLED:true}
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
-
-smart-office:
-  jwt:
-    issuer: smart-office
-    secret: ${JWT_SECRET:smart-office-jwt-secret-please-change-32bytes}
-    expiration: ${JWT_EXPIRATION:86400000}

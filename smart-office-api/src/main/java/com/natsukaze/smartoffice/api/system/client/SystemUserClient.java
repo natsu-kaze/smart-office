@@ -18,6 +18,9 @@ public interface SystemUserClient {
     @GetMapping("/username/{username}")
     Result<SystemAuthUserDTO> getByUsername(@PathVariable("username") String username);
 
+    @GetMapping("/roles/{roleCode}/first-user")
+    Result<CurrentUserDTO> getFirstUserByRole(@PathVariable("roleCode") String roleCode);
+
     @PutMapping("/{userId}/last-login")
     Result<Void> updateLastLoginTime(@PathVariable("userId") Long userId);
 }

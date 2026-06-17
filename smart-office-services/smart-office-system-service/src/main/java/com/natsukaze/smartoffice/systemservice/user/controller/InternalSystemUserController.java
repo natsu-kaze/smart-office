@@ -28,6 +28,11 @@ public class InternalSystemUserController {
         return Result.success(systemUserService.getAuthUserByUsername(username));
     }
 
+    @GetMapping("/roles/{roleCode}/first-user")
+    public Result<CurrentUserDTO> getFirstUserByRole(@PathVariable String roleCode) {
+        return Result.success(systemUserService.getFirstUserByRole(roleCode));
+    }
+
     @PutMapping("/{userId}/last-login")
     public Result<Void> updateLastLoginTime(@PathVariable Long userId) {
         systemUserService.updateLastLoginTime(userId);

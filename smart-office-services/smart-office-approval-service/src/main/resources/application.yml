@@ -2,20 +2,11 @@ server:
   port: 9104
 
 spring:
+  profiles:
+    active: local
   application:
     name: smart-office-approval-service
-  cloud:
-    nacos:
-      discovery:
-        enabled: ${NACOS_DISCOVERY_ENABLED:true}
-        register-enabled: ${NACOS_REGISTER_ENABLED:true}
-        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
-    service-registry:
-      auto-registration:
-        enabled: ${SERVICE_REGISTRY_AUTO_REGISTRATION_ENABLED:true}
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
+smart-office:
+  jdbc:
+    database: smart_office_approval

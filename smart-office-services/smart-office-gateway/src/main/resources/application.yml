@@ -2,62 +2,7 @@ server:
   port: 8000
 
 spring:
+  profiles:
+    active: local
   application:
     name: smart-office-gateway
-  cloud:
-    nacos:
-      discovery:
-        enabled: ${NACOS_DISCOVERY_ENABLED:true}
-        register-enabled: ${NACOS_REGISTER_ENABLED:true}
-        server-addr: ${NACOS_SERVER_ADDR:127.0.0.1:8848}
-    service-registry:
-      auto-registration:
-        enabled: ${SERVICE_REGISTRY_AUTO_REGISTRATION_ENABLED:true}
-    gateway:
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true
-      routes:
-        - id: auth-service
-          uri: lb://smart-office-auth-service
-          predicates:
-            - Path=/api/auth/**
-        - id: system-service
-          uri: lb://smart-office-system-service
-          predicates:
-            - Path=/api/system/**
-        - id: org-service
-          uri: lb://smart-office-org-service
-          predicates:
-            - Path=/api/org/**
-        - id: approval-service
-          uri: lb://smart-office-approval-service
-          predicates:
-            - Path=/api/approvals/**
-        - id: attendance-service
-          uri: lb://smart-office-attendance-service
-          predicates:
-            - Path=/api/attendance/**
-        - id: message-service
-          uri: lb://smart-office-message-service
-          predicates:
-            - Path=/api/messages/**
-        - id: file-service
-          uri: lb://smart-office-file-service
-          predicates:
-            - Path=/api/files/**
-        - id: search-service
-          uri: lb://smart-office-search-service
-          predicates:
-            - Path=/api/policies/**
-        - id: ai-service
-          uri: lb://smart-office-ai-service
-          predicates:
-            - Path=/api/ai/**
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,gateway

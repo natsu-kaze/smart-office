@@ -17,6 +17,7 @@ services:
       - ../smart-office-server/src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ../smart-office-server/src/main/resources/db/data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
       - ./mysql/init/03-xxl-job.sql:/docker-entrypoint-initdb.d/03-xxl-job.sql:ro
+      - ./mysql/init/04-smart-office-microservices.sql:/docker-entrypoint-initdb.d/04-smart-office-microservices.sql:ro
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -65,6 +66,31 @@ services:
       interval: 15s
       timeout: 5s
       retries: 20
+
+  nacos-config-importer:
+    image: curlimages/curl:8.10.1
+    container_name: smart-office-nacos-config-importer
+    depends_on:
+      nacos:
+        condition: service_healthy
+    volumes:
+      - ./nacos/config:/config:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command: >
+      'for file in /config/*.yaml; do
+        data_id="$$(basename "$$file")";
+        for attempt in $$(seq 1 20); do
+          echo "Publishing $$data_id to Nacos, attempt $$attempt";
+          if curl -fsS -X POST "http://nacos:8848/nacos/v1/cs/configs" --data-urlencode "dataId=$$data_id" --data-urlencode "group=DEFAULT_GROUP" --data-urlencode "type=yaml" --data-urlencode "content@$$file"; then
+            break;
+          fi;
+          if [ "$$attempt" = "20" ]; then
+            exit 1;
+          fi;
+          sleep 3;
+        done;
+      done'
+    restart: "no"
 
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
