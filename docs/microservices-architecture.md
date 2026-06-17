@@ -212,6 +212,26 @@ $env:RABBITMQ_PORT='5673'
 
 下一步：
 
-1. 补 gateway JWT 校验与 `X-User-Id` 透传。
-2. 迁移 attendance-service 到 `smart_office_attendance`。
-3. 继续迁移 file/search/ai，并补完整网关联调。
+1. 联调 approval/message 的审批待办和通知链路。
+2. 补 file-service 真实 MinIO 上传接口。
+3. 给 search-service 接 Elasticsearch 索引同步与全文检索。
+4. ai-service 暂按占位处理，后续单独迁移。
+
+## Gateway 鉴权与业务服务迁移
+
+已补齐：
+
+* gateway：JWT 校验、身份 Header 透传、外部伪造身份 Header 清理。
+* attendance-service：考勤规则、打卡、今日考勤、个人/部门记录、月度统计。
+* file-service：文件记录创建、详情、预览 URL、删除。
+* search-service：制度文档分页、创建、更新、详情、删除。
+* org-service 内部契约：按部门查询用户 ID 列表，供考勤部门记录查询使用。
+
+运行验证：
+
+* Docker 中间件保持运行：MySQL、Redis、Nacos、RabbitMQ、Elasticsearch、MinIO、XXL-JOB Admin。
+* 使用 `C:\Users\14224\.jdks\ms-17.0.18\bin\java.exe` 临时启动 system/org/auth/attendance/file/search/gateway。
+* 已验证 gateway 未带 token 访问业务接口返回 `401`。
+* 已验证 gateway 登录 `admin/123456` 成功。
+* 已验证带 token 访问 `/api/auth/me`、`/api/attendance/today`、`/api/files/records`、`/api/policies` 成功。
+* 已通过 `mvn -DskipTests compile`、`mvn -DskipTests package`、`mvn test`。

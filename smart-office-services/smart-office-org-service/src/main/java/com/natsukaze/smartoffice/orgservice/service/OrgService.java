@@ -249,6 +249,15 @@ public class OrgService {
                 department == null ? null : department.getLeaderUserId());
     }
 
+    public List<Long> listUserIdsByDepartmentId(Long departmentId) {
+        requireDepartment(departmentId);
+        return employeeMapper.selectList(new LambdaQueryWrapper<OrgEmployee>()
+                        .eq(OrgEmployee::getDepartmentId, departmentId))
+                .stream()
+                .map(OrgEmployee::getUserId)
+                .toList();
+    }
+
     @Transactional
     public EmployeeVO createEmployee(EmployeeSaveRequest request) {
         ensureEmployeeNoAvailable(request.getEmployeeNo(), null);

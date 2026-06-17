@@ -20,5 +20,6 @@ spring:
     import:
       - optional:nacos:${spring.application.name}.yaml
       - optional:nacos:shared-spring.yaml
+      - optional:nacos:shared-mybatis.yaml
       - optional:nacos:shared-logs.yaml
       - optional:nacos:shared-feign.yaml

@@ -588,13 +588,32 @@ finance / 123456
 * [x] 已通过 `mvn -DskipTests compile` 与 `mvn test`。
 * [x] Docker 中间件已启动：MySQL、Redis、Nacos、RabbitMQ、Elasticsearch、MinIO、XXL-JOB Admin。
 * [x] 已验证 system-service 从 Nacos 加载 `shared-mybatis.yaml`，连接 `smart_office_system`，`/actuator/health` 返回 UP。
-* [ ] 由于 Windows 排除端口和宿主服务占用，当前 Docker 宿主端口临时为：Nacos `8951/9951`、Redis `6380`、RabbitMQ `5673`、Elasticsearch transport `9459`。
-* [ ] gateway JWT 校验与 `X-User-Id` 透传仍待补齐，当前业务服务用户身份 Header 仍是临时方案。
-* [ ] attendance-service / file-service / search-service / ai-service 仍需继续迁移业务实体、Mapper、Service、Controller。
+* [x] 由于 Windows 排除端口和宿主服务占用，当前 Docker 宿主端口临时为：Nacos `8951/9951`、Redis `6380`、RabbitMQ `5673`、Elasticsearch transport `9459`。
+* [x] gateway 已补 JWT 校验与 `X-User-Id` / `X-Username` / `X-Real-Name` 透传，并清理外部伪造身份 Header。
+* [x] attendance-service 已迁移考勤规则、打卡、今日考勤、个人/部门记录、月度统计，切到 `smart_office_attendance`。
+* [x] file-service 已迁移文件记录创建、详情、预览 URL、删除，切到 `smart_office_file`。
+* [x] search-service 已迁移制度文档分页、创建、更新、详情、删除，切到 `smart_office_search`。
+* [ ] ai-service 仍保持占位，后续单独接 AI 会话、提示词与知识问答。
 
 下一步：
 
-1. 补 gateway JWT 解析与 `X-User-Id` 透传，让 approval/message/org 等接口能通过网关真实带当前用户。
-2. 迁移 attendance-service：考勤规则、打卡、个人/部门记录查询，并切到 `smart_office_attendance`。
-3. 迁移 file-service 与 MinIO 上传接口，再迁 search-service 的制度文档基础查询。
-4. 最后联调 gateway -> auth/system/org/approval/message 的登录、审批提交、待办生成、审批通知链路。
+1. 联调 approval/message：通过 gateway 完成审批提交、待办生成、审批通过/驳回、通知创建链路。
+2. 补 file-service 真实 MinIO 上传接口，并让前端文件选择器走上传而不是只写记录。
+3. 给 search-service 接 Elasticsearch 索引同步与全文检索。
+4. 最后迁 ai-service，占位不阻塞当前办公主流程。
+
+## 21. gateway 鉴权与业务服务迁移进度
+
+* [x] gateway 已新增 JWT 解析过滤器，放行 `/api/auth/login` 和 Actuator 健康接口，其余接口必须带 `Authorization: Bearer <token>`。
+* [x] gateway 已补 `spring-cloud-starter-loadbalancer`，修复 `lb://smart-office-auth-service` 运行时找不到实例的问题。
+* [x] gateway 的 JWT 配置已加入 `docker/nacos/config/smart-office-gateway.yaml`，与 auth-service 使用同一 issuer/secret。
+* [x] attendance/file/search 的 `application-local.yml` 已导入 `shared-mybatis.yaml`，从 Nacos 加载独立库数据源。
+* [x] org-service 已新增内部接口 `/internal/org/employees/department/{departmentId}/user-ids`，供 attendance-service 查询部门用户。
+* [x] 已用 Docker 中间件 + 临时 Java 17 进程完成 gateway 冒烟：未带 token 返回 401，登录成功，`/api/auth/me`、`/api/attendance/today`、文件记录创建/详情、制度文档创建/分页均通过。
+* [x] 已通过 `mvn -DskipTests compile`、`mvn -DskipTests package`、`mvn test`。
+
+下一步：
+
+1. 跑 approval/message 的网关联调，重点验证审批提交后 message-service 生成待办和通知。
+2. 将前端代理从单体逐步切到 gateway，补一轮 Playwright 网关冒烟。
+3. 开始补 MinIO 上传、ES 检索、XXL-JOB 考勤结算这些中间件型能力。

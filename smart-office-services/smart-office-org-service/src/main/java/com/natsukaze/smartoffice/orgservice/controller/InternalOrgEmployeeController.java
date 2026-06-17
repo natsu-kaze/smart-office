@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/internal/org/employees")
 @RequiredArgsConstructor
@@ -19,5 +21,10 @@ public class InternalOrgEmployeeController {
     @GetMapping("/user/{userId}")
     public Result<OrgEmployeeDTO> getByUserId(@PathVariable Long userId) {
         return Result.success(orgService.getEmployeeByUserId(userId));
+    }
+
+    @GetMapping("/department/{departmentId}/user-ids")
+    public Result<List<Long>> listUserIdsByDepartmentId(@PathVariable Long departmentId) {
+        return Result.success(orgService.listUserIdsByDepartmentId(departmentId));
     }
 }
