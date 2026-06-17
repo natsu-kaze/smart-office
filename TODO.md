@@ -554,3 +554,22 @@ finance / 123456
 1. 先恢复当前终端 Docker CLI 与 Docker Desktop 的连接，启动 MySQL / Nacos。
 2. 启动 system-service、auth-service、gateway，验证 `/api/auth/login` 能通过 gateway 登录。
 3. 继续迁移 org-service，补公司、部门、岗位、员工基础查询与管理接口。
+## 19. org-service 迁移进度
+
+* [x] org-service 已补齐 MyBatis-Plus / MySQL / Lombok 依赖与数据源配置
+* [x] org-service 已迁移公司、部门、岗位、员工实体、Mapper、DTO、VO、Controller、Service
+* [x] org-service 保留 `/api/org/**` API 路径，兼容当前前端代理和网关路由
+* [x] org-service 通过 Feign 调 system-service 获取用户信息，不直接依赖 `sys_user` 表
+* [x] common 已补 `PageQuery`，供微服务分页查询复用
+* [x] 已通过 `mvn -pl smart-office-services/smart-office-org-service -am -DskipTests compile`
+* [x] 已通过 `mvn -DskipTests compile` 与 `mvn test`
+* [x] org-service 已用 JDK 21 临时启动，Spring 容器可启动
+* [ ] org-service 数据库联调：当前 `/actuator/health` 因 Docker/MySQL 未连通返回 DOWN
+* [ ] org-service + system-service Feign 运行态联调
+
+当前环境卡点：
+
+* 当前终端无法连接 Docker Desktop pipe，`docker version` 报 `dockerDesktopLinuxEngine` pipe 不存在。
+* 当前终端无权限启动 `com.docker.service`。
+* `5672` 当前被本机 `erl.exe` 占用，后续 RabbitMQ 容器仍需释放端口。
+* 命令行 `java` 默认仍是 JDK 11，Maven 使用 JDK 21；运行 Spring Boot 3 服务需显式使用 JDK 17/21。

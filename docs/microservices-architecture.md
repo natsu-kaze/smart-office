@@ -148,3 +148,12 @@ Invoke-WebRequest -UseBasicParsing http://127.0.0.1:9102/internal/health
 * `mvn test` 通过。
 * auth-service 使用 JDK 21 临时启动，`/actuator/health` 返回 `UP`。
 * system-service 可启动，当前因 Docker/MySQL 在本终端不可达，`/actuator/health` 返回 `DOWN`，待数据库联调。
+* org-service 已迁移公司、部门、岗位、员工基础接口，保留 `/api/org/**` 路径，通过 Feign 调 system-service 获取用户信息。
+* org-service 使用 JDK 21 临时启动，Spring 容器可启动；当前因 Docker/MySQL 在本终端不可达，`/actuator/health` 返回 `DOWN`。
+
+当前本地环境待处理：
+
+* 当前终端无法连接 Docker Desktop pipe，`docker version` 报 `dockerDesktopLinuxEngine` pipe 不存在。
+* 当前终端无权限启动 `com.docker.service`。
+* `5672` 被本机 `erl.exe` 占用，后续 RabbitMQ 容器启动前需要释放。
+* PATH 中默认 `java` 为 JDK 11，运行 Spring Boot 3 服务需使用 JDK 17/21。
