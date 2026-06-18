@@ -34,6 +34,7 @@ test('smart office main flow smoke test', async ({ page }) => {
     ['/org', () => page.getByRole('heading', { name: '组织架构' })],
     ['/approvals', () => page.getByRole('button', { name: '新建审批' })],
     ['/messages', () => page.getByRole('heading', { name: '待办中心' })],
+    ['/files', () => page.getByRole('heading', { name: '文件中心' })],
     ['/attendance', () => page.getByText('今日考勤')],
   ] as const
 

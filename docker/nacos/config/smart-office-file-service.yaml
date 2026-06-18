@@ -1,3 +1,9 @@
 smart-office:
   service:
     module: file
+  minio:
+    endpoint: ${MINIO_ENDPOINT:http://127.0.0.1:9000}
+    access-key: ${MINIO_ACCESS_KEY:smartoffice}
+    secret-key: ${MINIO_SECRET_KEY:smartoffice123456}
+    bucket: ${MINIO_BUCKET:smart-office-files}
+    preview-expiry-minutes: ${MINIO_PREVIEW_EXPIRY_MINUTES:30}

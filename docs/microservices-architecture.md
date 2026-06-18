@@ -106,6 +106,8 @@ gateway 负责统一入口和身份透传：
   * `approval_form.content` 已从 `JSON` 调整为 `TEXT`，支持普通表单文本内容。
 * 前端审批中心支持保存草稿、保存并提交、提交草稿、通过、驳回。
 * 前端新增消息中心，支持待办列表、通知列表、标记完成、标记已读。
+* file-service 已接入 MinIO，支持真实上传、预览 URL、服务端下载。
+* 前端新增文件中心，支持文件上传、预览、下载。
 
 已验证：
 
@@ -118,6 +120,11 @@ gateway 负责统一入口和身份透传：
   * `employee/123456` 创建并提交审批。
   * `manager/123456` 查看审批待办并审批。
   * manager 待办完成，employee 收到结果通知。
+* `scripts/smoke-p1-file-minio.ps1` 已覆盖 file/MinIO 网关链路：
+  * `employee/123456` 上传文件。
+  * 文件记录写入 MySQL。
+  * 预签名 URL 可读取 MinIO 对象。
+  * `/api/files/{id}/download` 可下载原始内容。
 
 待验证：
 
@@ -145,9 +152,9 @@ npm run dev -- --mode microservice
 
 ## 8. 后续顺序
 
-1. file-service 接入 MinIO 真实上传、下载、预览。
+1. message-service 接入 RabbitMQ 异步通知。
 2. 将 Playwright 冒烟切到 microservice 模式。
-3. 补文件链路前端入口与 HTTP 冒烟。
+3. XXL-JOB 考勤结算。
 4. message-service 接入 RabbitMQ 异步通知。
 5. attendance-service 接入 XXL-JOB 每日结算和月度统计。
 6. search-service 接入 Elasticsearch 索引同步和全文检索。

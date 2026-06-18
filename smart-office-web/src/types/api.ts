@@ -98,3 +98,17 @@ export interface MessageTodo {
   completedTime?: string
   createTime?: string
 }
+
+export interface FileRecord {
+  id: number
+  originalName: string
+  storageName: string
+  bucket: string
+  objectKey: string
+  contentType?: string
+  size: number
+  url?: string
+  uploaderId?: number
+  businessType?: string
+  businessId?: number
+}

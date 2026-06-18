@@ -413,10 +413,10 @@ $env:RABBITMQ_PORT='5673'
 
 ## 当前开发目标
 
-当前目标是完成微服务版本的核心办公闭环，并让前端逐步切到 gateway：
+当前目标是继续补齐微服务版本的中间件能力，并让前端逐步切到 gateway：
 
-1. 通过 gateway 登录、鉴权和透传用户身份。
-2. 联调审批提交、待办生成、审批处理、通知生成。
-3. 将前端代理切到 gateway，补 Playwright 网关冒烟。
-4. 补 MinIO 文件上传、RabbitMQ 异步通知、XXL-JOB 考勤结算、Elasticsearch 制度文档检索。
+1. gateway 登录、鉴权、身份透传和审批/消息主链路已通过。
+2. file-service 已接入 MinIO 上传、预览、下载，并新增文件中心。
+3. 下一步补 RabbitMQ 异步通知、XXL-JOB 考勤结算、Elasticsearch 制度文档检索。
+4. 将前端代理切到 gateway，补 Playwright microservice 冒烟。
 5. 最后迁移 AI 独立能力，AI 不阻塞审批、考勤、组织、消息主流程。

@@ -2,7 +2,7 @@
 
 ## 当前执行快照（2026-06-18）
 
-P0 approval/message gateway 运行时联调已通过，下一步进入 P1：MinIO 文件上传。
+P1 MinIO 文件上传链路已通过，下一步进入 RabbitMQ 消息异步化。
 
 已完成：
 * [x] approval-service 提交审批时创建审批节点、审批待办和审批通知。
@@ -13,6 +13,9 @@ P0 approval/message gateway 运行时联调已通过，下一步进入 P1：MinI
 * [x] 新增 approval-service 单元测试覆盖提交、审批通过、消息命令失败三条链路。
 * [x] 修复审批内容字段类型：`approval_form.content` 从 `JSON` 调整为 `TEXT`。
 * [x] 新增 `scripts/smoke-p0-approval-message.ps1`，固化 P0 网关冒烟链路。
+* [x] file-service 接入 MinIO 真实上传、预览、下载。
+* [x] smart-office-web 新增文件中心，支持文件上传、预览、下载。
+* [x] 新增 `scripts/smoke-p1-file-minio.ps1`，固化文件/MinIO 网关冒烟链路。
 
 已验证：
 * [x] `mvn -pl smart-office-services/smart-office-approval-service -am test`
@@ -20,12 +23,13 @@ P0 approval/message gateway 运行时联调已通过，下一步进入 P1：MinI
 * [x] `npm run build`（smart-office-web）
 * [x] `git diff --check`
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p0-approval-message.ps1`
+* [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-file-minio.ps1`
 
 下一步：
-1. file-service 接入 MinIO 真实上传、下载、预览。
-2. 前端补文件选择上传入口。
-3. 补文件链路 HTTP 冒烟。
-4. 再将 Playwright 冒烟切到 `--mode microservice`，覆盖审批和消息中心。
+1. message-service 接入 RabbitMQ 异步通知。
+2. 补 RabbitMQ 队列、交换机、消费者配置与降级策略。
+3. 补消息异步链路 HTTP 冒烟。
+4. 再将 Playwright 冒烟切到 `--mode microservice`，覆盖审批、消息、文件中心。
 
 ## 当前目标与步骤
 
@@ -36,7 +40,7 @@ P0 approval/message gateway 运行时联调已通过，下一步进入 P1：MinI
 * [ ] 跑通微服务版审批主链路：gateway -> auth/system/org/approval/message。
 * [ ] 验证审批提交后生成待办，审批处理后完成待办并生成通知。
 * [ ] 将前端代理逐步切到 gateway，并补 Playwright 网关冒烟。
-* [ ] 补 file-service 真实 MinIO 上传、下载、预览。
+* [x] 补 file-service 真实 MinIO 上传、下载、预览。
 * [ ] 补 message-service RabbitMQ 异步通知。
 * [ ] 补 attendance-service XXL-JOB 考勤结算与月度统计。
 * [ ] 补 search-service Elasticsearch 索引同步与全文检索。

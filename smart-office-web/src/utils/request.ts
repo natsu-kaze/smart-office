@@ -28,6 +28,9 @@ request.interceptors.request.use((config) => {
 
 request.interceptors.response.use(
   ((response: AxiosResponse<Result>) => {
+    if (response.config.responseType === 'blob') {
+      return response.data
+    }
     const body = response.data as Result
     if (body.code === 0) {
       return body.data

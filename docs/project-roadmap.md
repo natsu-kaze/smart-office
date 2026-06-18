@@ -93,7 +93,7 @@ C:\Users\14224\.jdks\ms-17.0.18\bin\java.exe
 
 ## 4. 2026-06-18 进展快照
 
-P0 的代码层闭环和 gateway 运行时联调已通过，下一步进入 P1：MinIO 文件上传。
+P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件上传、预览、下载链路也已通过，下一步进入 RabbitMQ 消息异步化。
 
 本轮完成：
 
@@ -105,6 +105,9 @@ P0 的代码层闭环和 gateway 运行时联调已通过，下一步进入 P1�
 * 新增 approval-service 单元测试覆盖提交、审批通过和消息命令失败。
 * 修复审批内容字段类型：`approval_form.content` 从 `JSON` 调整为 `TEXT`。
 * 新增 `scripts/smoke-p0-approval-message.ps1`，固化审批/消息网关冒烟。
+* file-service 接入 MinIO，支持真实上传、预览 URL、服务端下载。
+* smart-office-web 新增文件中心，支持上传、预览、下载。
+* 新增 `scripts/smoke-p1-file-minio.ps1`，固化文件/MinIO 网关冒烟。
 
 本轮已验证：
 
@@ -113,6 +116,7 @@ P0 的代码层闭环和 gateway 运行时联调已通过，下一步进入 P1�
 * `npm run build`（smart-office-web）
 * `git diff --check`
 * `powershell -ExecutionPolicy Bypass -File scripts/smoke-p0-approval-message.ps1`
+* `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-file-minio.ps1`
 
 ## 5. 下一阶段目标
 
@@ -138,6 +142,7 @@ P0 的代码层闭环和 gateway 运行时联调已通过，下一步进入 P1�
 ### P1：中间件能力补齐
 
 1. file-service 接入 MinIO 真实上传、下载、预览。
+   * 已完成：上传、预览 URL、服务端下载、前端文件中心、网关冒烟。
 2. message-service 接 RabbitMQ 异步通知。
 3. attendance-service 接 XXL-JOB 每日结算和月度统计。
 4. search-service 接 Elasticsearch 索引同步和全文检索。
