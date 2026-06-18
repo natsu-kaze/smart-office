@@ -50,6 +50,10 @@ management:
         include: health,info,gateway
 
 smart-office:
+  auth:
+    token:
+      enabled: ${AUTH_TOKEN_REDIS_ENABLED:true}
+      key-prefix: ${AUTH_TOKEN_KEY_PREFIX:smart-office:auth:token}
   jwt:
     issuer: smart-office
     secret: ${JWT_SECRET:smart-office-jwt-secret-please-change-32bytes}

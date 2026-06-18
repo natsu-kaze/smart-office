@@ -31,8 +31,11 @@ public class GatewayAuthFilter implements GlobalFilter, Ordered {
 
     private final GatewayJwtService jwtService;
 
-    public GatewayAuthFilter(GatewayJwtService jwtService) {
+    private final GatewayTokenStore tokenStore;
+
+    public GatewayAuthFilter(GatewayJwtService jwtService, GatewayTokenStore tokenStore) {
         this.jwtService = jwtService;
+        this.tokenStore = tokenStore;
     }
 
     @Override
@@ -53,17 +56,23 @@ public class GatewayAuthFilter implements GlobalFilter, Ordered {
             if (userId == null) {
                 return unauthorized(exchange, "invalid token");
             }
-            ServerHttpRequest request = exchange.getRequest().mutate()
-                    .headers(headers -> {
-                        headers.remove(USER_ID_HEADER);
-                        headers.remove(USERNAME_HEADER);
-                        headers.remove(REAL_NAME_HEADER);
-                    })
-                    .header(USER_ID_HEADER, String.valueOf(userId))
-                    .header(USERNAME_HEADER, claims.getSubject())
-                    .header(REAL_NAME_HEADER, String.valueOf(claims.get("realName", String.class)))
-                    .build();
-            return chain.filter(exchange.mutate().request(request).build());
+            return tokenStore.isActive(token)
+                    .flatMap(active -> {
+                        if (!active) {
+                            return unauthorized(exchange, "invalid token");
+                        }
+                        ServerHttpRequest request = exchange.getRequest().mutate()
+                                .headers(headers -> {
+                                    headers.remove(USER_ID_HEADER);
+                                    headers.remove(USERNAME_HEADER);
+                                    headers.remove(REAL_NAME_HEADER);
+                                })
+                                .header(USER_ID_HEADER, String.valueOf(userId))
+                                .header(USERNAME_HEADER, claims.getSubject())
+                                .header(REAL_NAME_HEADER, String.valueOf(claims.get("realName", String.class)))
+                                .build();
+                        return chain.filter(exchange.mutate().request(request).build());
+                    });
         } catch (RuntimeException ex) {
             return unauthorized(exchange, "invalid token");
         }

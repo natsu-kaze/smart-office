@@ -14,6 +14,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -29,13 +30,17 @@ public class AuthService {
 
     private final SystemUserClient systemUserClient;
 
+    private final AuthTokenStore tokenStore;
+
     public LoginResponse login(LoginRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        String token = jwtService.generateToken(principal);
+        tokenStore.store(token, principal, jwtProperties.getExpiration());
         systemUserClient.updateLastLoginTime(principal.getUserId());
         return LoginResponse.builder()
-                .token(jwtService.generateToken(principal))
+                .token(token)
                 .tokenType("Bearer")
                 .expiresIn(jwtProperties.getExpiration())
                 .user(toUserVO(principal))
@@ -44,6 +49,17 @@ public class AuthService {
 
     public AuthUserVO currentUser(UserPrincipal principal) {
         return toUserVO(principal);
+    }
+
+    public void logout(String authorization) {
+        tokenStore.revoke(resolveToken(authorization));
+    }
+
+    private String resolveToken(String authorization) {
+        if (StringUtils.hasText(authorization) && authorization.startsWith("Bearer ")) {
+            return authorization.substring("Bearer ".length());
+        }
+        return null;
     }
 
     private AuthUserVO toUserVO(UserPrincipal principal) {

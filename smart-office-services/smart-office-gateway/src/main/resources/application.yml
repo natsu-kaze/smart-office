@@ -6,3 +6,9 @@ spring:
     active: local
   application:
     name: smart-office-gateway
+
+smart-office:
+  auth:
+    token:
+      enabled: ${AUTH_TOKEN_REDIS_ENABLED:true}
+      key-prefix: ${AUTH_TOKEN_KEY_PREFIX:smart-office:auth:token}

@@ -34,6 +34,8 @@
 * [x] 新增 `scripts/smoke-p1-attendance-xxl-job.ps1`，固化考勤/XXL-JOB 网关冒烟链路。
 * [x] search-service 接入 Elasticsearch，支持制度文档索引同步、重建和全文检索降级。
 * [x] 新增 `scripts/smoke-p1-search-elasticsearch.ps1`，固化制度文档 ES 网关冒烟链路。
+* [x] auth-service 接入 Redis Token 存储，gateway 完成 Redis 二次校验，退出登录后旧 token 立即失效。
+* [x] 新增 `scripts/smoke-p1-auth-redis-token.ps1`，固化登录、当前用户、退出、旧 token 拒绝链路。
 
 已验证：
 * [x] `mvn -pl smart-office-services/smart-office-approval-service -am test`
@@ -48,13 +50,14 @@
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-attendance-xxl-job.ps1`
 * [x] `mvn -pl smart-office-services/smart-office-search-service -am test`
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-search-elasticsearch.ps1`
+* [x] `mvn -pl smart-office-services/smart-office-auth-service,smart-office-services/smart-office-gateway -am test`
+* [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-auth-redis-token.ps1`
 
 当前下一步：
-1. auth-service 接入 Redis Token 存储、gateway 二次校验与退出失效。
-2. approval-service 补重复审批/并发审批控制和报销二级审批。
-3. message-service 补考勤异常通知、消费幂等和失败重试。
-4. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
-5. 最后迁移 ai-service，AI 不阻塞办公主流程。
+1. approval-service 补重复审批/并发审批控制和报销二级审批。
+2. message-service 补考勤异常通知、消费幂等和失败重试。
+3. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
+4. 最后迁移 ai-service，AI 不阻塞办公主流程。
 
 ## 当前目标与步骤
 
@@ -67,7 +70,7 @@
 * [x] 将前端代理稳定切到 gateway，并补 Playwright microservice 冒烟。
 * [x] 补 attendance-service XXL-JOB 考勤结算与月度统计。
 * [x] 补 search-service Elasticsearch 索引同步与全文检索。
-* [ ] 补 auth-service Redis Token 存储、gateway 二次校验与退出失效。
+* [x] 补 auth-service Redis Token 存储、gateway 二次校验与退出失效。
 * [ ] 补 approval-service 重复审批/并发审批控制和报销二级审批。
 * [ ] 补 message-service 考勤异常通知、消费幂等和失败重试。
 * [ ] 补 smart-office-web 制度文档检索、审批详情、考勤记录等页面。
@@ -75,11 +78,10 @@
 
 推荐执行顺序：
 
-1. Redis Token 与退出失效。
-2. 审批并发与规则补强。
-3. 消息可靠性与考勤异常通知。
-4. 前端体验补齐。
-5. ai-service 独立迁移。
+1. 审批并发与规则补强。
+2. 消息可靠性与考勤异常通知。
+3. 前端体验补齐。
+4. ai-service 独立迁移。
 
 当前 Elasticsearch 任务验收命令：
 
@@ -184,8 +186,8 @@
 * [x] 实现登录认证过滤器
 * [x] 实现接口权限校验
 * [x] 实现密码加密
-* [ ] Redis 存储登录 Token
-* [ ] 用户退出时删除 Token
+* [x] Redis 存储登录 Token
+* [x] 用户退出时删除 Token
 
 ## 4. 组织架构模块
 
@@ -582,7 +584,7 @@ finance / 123456
 
 ### P1：简历加分
 
-* [ ] Redis Token
+* [x] Redis Token
 * [ ] Redisson 防重复审批
 * [x] RabbitMQ 异步通知
 * [x] MinIO 文件上传

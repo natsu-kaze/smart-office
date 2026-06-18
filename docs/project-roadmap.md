@@ -54,7 +54,7 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 业务与中间件：
 
 * gateway：JWT 校验、路由、身份 Header 透传、外部伪造 Header 清理。
-* auth-service：登录、当前用户、退出、JWT 签发。
+* auth-service：登录、当前用户、退出、JWT 签发、Redis Token 存储和退出失效。
 * system-service：用户认证、用户分页、角色和用户角色基础能力。
 * org-service：公司、部门、岗位、员工、部门负责人、内部活跃用户列表。
 * approval-service：审批草稿、提交、通过、驳回、撤回、关闭、审批节点和记录。
@@ -71,6 +71,7 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 * `scripts/smoke-p1-message-rabbitmq.ps1`：审批通知 RabbitMQ 链路。
 * `scripts/smoke-p1-attendance-xxl-job.ps1`：考勤和 XXL-JOB 链路。
 * `scripts/smoke-p1-search-elasticsearch.ps1`：制度文档和 Elasticsearch 链路。
+* `scripts/smoke-p1-auth-redis-token.ps1`：登录、当前用户、退出和旧 token 拒绝链路。
 * `smart-office-web` 的 `npm run test:e2e:microservice`：前端 microservice 模式 Playwright 冒烟。
 
 ## 4. 当前目标
@@ -79,11 +80,10 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 
 优先级：
 
-1. auth-service 接入 Redis Token，完成登录态存储、网关校验和退出失效。
-2. approval-service 接入 Redisson 或乐观锁增强，处理重复审批和并发审批。
-3. message-service 扩展考勤异常通知、消费幂等和失败重试。
-4. 前端补制度文档检索、审批详情、考勤记录等页面，并扩展 Playwright 冒烟。
-5. ai-service 独立迁移，接 Spring AI 和制度问答。
+1. approval-service 接入 Redisson 或乐观锁增强，处理重复审批和并发审批。
+2. message-service 扩展考勤异常通知、消费幂等和失败重试。
+3. 前端补制度文档检索、审批详情、考勤记录等页面，并扩展 Playwright 冒烟。
+4. ai-service 独立迁移，接 Spring AI 和制度问答。
 
 ## 5. 实施步骤
 
@@ -107,19 +107,19 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 
 ### Step 2：Redis Token 与退出失效
 
-要做：
+已实现：
 
-* auth-service 登录成功后把 token 写入 Redis。
+* auth-service 登录成功后把 token 写入 Redis，TTL 与 JWT 过期时间一致。
 * gateway 校验 JWT 后再校验 Redis 中 token 是否仍有效。
 * 退出登录时删除 Redis token。
-* 预留刷新 token 或 token 黑名单扩展点。
-* 更新登录、当前用户、退出相关冒烟脚本。
+* 已新增登录、当前用户、退出和旧 token 拒绝冒烟脚本。
+* 预留 `AUTH_TOKEN_REDIS_ENABLED` 开关和 token key 前缀配置。
 
 验收：
 
-* 登录后可正常访问 `/api/auth/me`。
-* 退出后旧 token 再访问 gateway 返回 `401`。
-* Redis 关闭时认证链路有明确错误或可配置降级策略。
+* `[x] 登录后可正常访问 /api/auth/me`
+* `[x] 退出后旧 token 再访问 gateway 返回 401`
+* `[x] scripts/smoke-p1-auth-redis-token.ps1`
 
 ### Step 3：审批并发与规则补强
 

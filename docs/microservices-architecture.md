@@ -98,6 +98,7 @@ gateway 负责统一入口和身份透传：
 
 * gateway JWT 鉴权和身份 Header 透传。
 * auth/system/org 基础登录与用户组织链路。
+* auth-service 已接入 Redis Token 存储，gateway 在 JWT 签名校验后再做 Redis 二次校验，退出后旧 token 立即失效。
 * attendance/file/search 基础业务迁移。
 * approval/message 代码层主链路：
   * 提交审批创建审批节点、待办和通知。
@@ -152,6 +153,10 @@ gateway 负责统一入口和身份透传：
   * employee 通过 gateway 创建已发布制度文档。
   * search-service 内部接口重建制度文档索引。
   * employee 通过 gateway 使用唯一关键字检索到制度文档。
+* `scripts/smoke-p1-auth-redis-token.ps1` 覆盖 auth/Redis Token 网关链路：
+  * employee 通过 gateway 登录并访问 `/api/auth/me`。
+  * employee 调用 `/api/auth/logout` 删除 Redis token。
+  * 旧 token 再访问 gateway 返回 `401`。
 
 ## 7. 推荐启动顺序
 
@@ -189,8 +194,7 @@ npm run test:e2e:microservice
 
 ## 8. 后续顺序
 
-1. auth-service 补 Redis Token 存储、gateway 二次校验和退出失效。
-2. approval-service 补重复审批、并发审批控制和报销二级审批。
-3. message-service 扩展考勤异常通知、消费幂等和失败重试。
-4. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
-5. ai-service 独立迁移，保持 AI 不阻塞主业务流程。
+1. approval-service 补重复审批、并发审批控制和报销二级审批。
+2. message-service 扩展考勤异常通知、消费幂等和失败重试。
+3. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
+4. ai-service 独立迁移，保持 AI 不阻塞主业务流程。

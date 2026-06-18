@@ -1,5 +1,6 @@
 package com.natsukaze.smartoffice.authservice.security;
 
+import com.natsukaze.smartoffice.authservice.service.AuthTokenStore;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,12 +30,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final UserDetailsService userDetailsService;
 
+    private final AuthTokenStore tokenStore;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String token = resolveToken(request);
         if (StringUtils.hasText(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
+                if (!tokenStore.isActive(token)) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
                 String username = jwtService.getUsername(token);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
                 UserPrincipal principal = (UserPrincipal) userDetails;
