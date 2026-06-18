@@ -1,65 +1,171 @@
 # Smart Office 当前目标与实施步骤
 
-本文档是当前开发路径的入口。`TODO.md` 保留细项和历史记录，本文只描述接下来怎么推进。
+本文档是当前开发路线的唯一入口。`TODO.md` 保留模块细项和历史记录，`docs/microservices-architecture.md` 保留运行结构、端口和联调说明。
 
-## 1. 当前定位
+## 1. 当前结论
 
-Smart Office 当前已从单体模块化阶段进入 Spring Cloud Alibaba 微服务联调阶段。
+Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Alibaba 微服务版联调与功能补齐。
 
-后端保留两条线：
+当前约定：
 
-* `smart-office-server`：单体业务基线，保留可运行和可回退能力。
-* `smart-office-services`：微服务版本，作为后续主线推进。
+* `smart-office-server` 保留为单体业务基线，只做必要修复，不继续扩展新能力。
+* `smart-office-services` 是后续主线，所有新能力优先落到微服务模块。
+* `smart-office-web` 通过 gateway 访问后端，不直接连业务服务端口。
+* AI 模块暂时搁置，最后作为独立增强能力迁移，不阻塞审批、考勤、组织、消息等主流程。
 
-当前重点不是继续扩展单体，而是把微服务版本核心办公闭环跑通：
+## 2. 总目标
+
+先完成一个可演示、可测试、可写进简历的企业办公微服务闭环：
 
 ```text
 登录认证
--> 网关鉴权
--> 组织与用户信息
--> 审批提交
+-> gateway 鉴权和身份透传
+-> 用户、组织基础数据
+-> 审批创建和提交
 -> 待办生成
 -> 审批处理
--> 待办完成
--> 通知生成
--> 考勤、文件、制度文档等业务服务经 gateway 访问
+-> 结果通知
+-> 考勤打卡和定时结算
+-> 文件上传和下载
+-> 制度文档检索
 ```
 
-AI 模块暂不阻塞主线，后续作为独立增强能力迁移。
+非 AI 主流程完成后，再做 AI 办公助手：
 
-## 2. 已完成基础
+```text
+制度问答
+-> 审批摘要
+-> 智能填单
+-> 风险提示
+```
 
-工程与基础设施：
+## 3. 已完成
+
+基础工程：
 
 * Spring Boot 3 + Java 17 后端工程已建立。
 * 单体模块化业务基线已完成。
-* 微服务父工程和服务模块已建立。
+* 微服务父工程、公共模块、API 契约和各业务服务骨架已完成。
 * Docker Compose 已包含 MySQL、Redis、Nacos、RabbitMQ、Elasticsearch、MinIO、XXL-JOB Admin。
 * Nacos 配置已拆分为共享配置和服务私有配置。
 * MySQL 已拆分为各服务独立数据库。
+* 前端 `smart-office-web` 已初始化，并切到 gateway 代理模式。
 
-已迁移微服务：
+业务与中间件：
 
-* `gateway`：路由、JWT 校验、身份 Header 透传。
-* `auth-service`：登录、JWT、当前用户、退出。
-* `system-service`：用户认证相关用户、角色、用户角色能力。
-* `org-service`：公司、部门、岗位、员工能力。
-* `approval-service`：审批单、审批记录、审批节点、审批操作基础链路。
-* `message-service`：消息、待办、内部命令接口。
-* `attendance-service`：考勤规则、打卡、记录、统计。
-* `file-service`：文件记录能力。
-* `search-service`：制度文档 MySQL 版检索能力。
-* `ai-service`：当前仅保留占位。
+* gateway：JWT 校验、路由、身份 Header 透传、外部伪造 Header 清理。
+* auth-service：登录、当前用户、退出、JWT 签发。
+* system-service：用户认证、用户分页、角色和用户角色基础能力。
+* org-service：公司、部门、岗位、员工、部门负责人、内部活跃用户列表。
+* approval-service：审批草稿、提交、通过、驳回、撤回、关闭、审批节点和记录。
+* message-service：待办、通知、RabbitMQ 异步通知、发送失败同步降级。
+* attendance-service：考勤规则、打卡、记录、月度统计、XXL-JOB 每日结算和月度统计任务。
+* file-service：MinIO 上传、下载、预览 URL、文件记录。
+* search-service：制度文档 MySQL 版 CRUD 和模糊检索。
+* smart-office-web：登录、工作台、用户、组织、审批、消息、文件、今日考勤基础页面。
 
-已验证：
+已固化脚本：
 
-* `mvn -DskipTests compile` 通过。
-* `mvn -DskipTests package` 通过。
-* `mvn test` 通过。
-* Docker 中间件可启动并保持健康。
-* gateway 基础冒烟通过：未带 token 返回 `401`，登录成功，带 token 可访问当前用户、考勤、文件记录、制度文档接口。
+* `scripts/smoke-p0-approval-message.ps1`：审批和消息网关主链路。
+* `scripts/smoke-p1-file-minio.ps1`：文件和 MinIO 链路。
+* `scripts/smoke-p1-message-rabbitmq.ps1`：审批通知 RabbitMQ 链路。
+* `scripts/smoke-p1-attendance-xxl-job.ps1`：考勤和 XXL-JOB 链路。
+* `smart-office-web` 的 `npm run test:e2e:microservice`：前端 microservice 模式 Playwright 冒烟。
 
-## 3. 本地约定
+## 4. 当前目标
+
+当前阶段目标是补齐非 AI 中间件能力，并把每个能力都落到真实业务链路里。
+
+优先级：
+
+1. search-service 接入 Elasticsearch，完成制度文档索引同步和全文检索。
+2. auth-service 接入 Redis Token，完成登录态存储、网关校验和退出失效。
+3. approval-service 接入 Redisson 或乐观锁增强，处理重复审批和并发审批。
+4. message-service 扩展考勤异常通知、消费幂等和失败重试。
+5. 前端补制度文档检索、审批详情、考勤记录等页面，并扩展 Playwright 冒烟。
+6. ai-service 独立迁移，接 Spring AI 和制度问答。
+
+## 5. 实施步骤
+
+### Step 1：Elasticsearch 制度文档检索
+
+要做：
+
+* 为 search-service 增加 Elasticsearch 依赖和配置。
+* 建立制度文档索引模型。
+* 制度文档新增、修改、删除时同步索引。
+* 增加重建索引接口或任务，支持从 MySQL 重新刷 ES。
+* 分页搜索优先走 ES；ES 不可用时给出明确错误或降级到 MySQL LIKE。
+* 新增 smoke 脚本，覆盖登录、创建制度文档、检索命中、清理数据。
+
+验收：
+
+* `mvn -pl smart-office-services/smart-office-search-service -am test`
+* `mvn test`
+* `git diff --check`
+* `scripts/smoke-p1-search-elasticsearch.ps1`
+
+### Step 2：Redis Token 与退出失效
+
+要做：
+
+* auth-service 登录成功后把 token 写入 Redis。
+* gateway 校验 JWT 后再校验 Redis 中 token 是否仍有效。
+* 退出登录时删除 Redis token。
+* 预留刷新 token 或 token 黑名单扩展点。
+* 更新登录、当前用户、退出相关冒烟脚本。
+
+验收：
+
+* 登录后可正常访问 `/api/auth/me`。
+* 退出后旧 token 再访问 gateway 返回 `401`。
+* Redis 关闭时认证链路有明确错误或可配置降级策略。
+
+### Step 3：审批并发与规则补强
+
+要做：
+
+* 补重复审批校验。
+* 给审批单关键状态变更增加乐观锁或 Redisson 锁。
+* 报销金额大于 1000 元时支持部门负责人加财务审批。
+* 补审批超时扫描任务和通知。
+
+验收：
+
+* 重复点击审批不会重复流转。
+* 非审批人、已处理审批、状态不合法时都有明确业务错误。
+* 单元测试覆盖并发或重复审批核心场景。
+
+### Step 4：前端体验补齐
+
+要做：
+
+* 制度文档管理和检索页面。
+* 审批详情页、审批时间线、审批操作弹窗。
+* 我的考勤、部门考勤、月度统计页面。
+* 扩展 Playwright microservice 冒烟。
+
+验收：
+
+* 前端仍只访问 gateway。
+* 页面能完整演示登录、审批、消息、文件、考勤、制度搜索。
+* `npm run build` 和 `npm run test:e2e:microservice` 通过。
+
+### Step 5：AI 独立增强
+
+要做：
+
+* 迁移 AI 会话、消息、提示词模板到 ai-service。
+* 接入 Spring AI。
+* 制度问答使用 search-service 检索结果作为上下文。
+* 审批摘要、智能填单、风险提示通过独立接口提供。
+
+验收：
+
+* AI 服务关闭时主流程不受影响。
+* AI 调用失败时可以降级为普通搜索或普通审批流程。
+
+## 6. 本地运行约定
 
 Docker 端口当前按 Windows 本机可用端口做了调整：
 
@@ -77,7 +183,18 @@ Docker 端口当前按 Windows 本机可用端口做了调整：
 | MinIO Console | 9001 |
 | XXL-JOB Admin | 8088 |
 
-本地启动业务服务前建议设置：
+启动中间件：
+
+```powershell
+$env:REDIS_HOST_PORT='6380'
+$env:RABBITMQ_HOST_PORT='5673'
+$env:NACOS_HOST_PORT='8951'
+$env:NACOS_GRPC_HOST_PORT='9951'
+$env:ELASTICSEARCH_TRANSPORT_PORT='9459'
+docker compose -f docker/docker-compose.yml up -d
+```
+
+启动业务服务前建议设置：
 
 ```powershell
 $env:NACOS_SERVER_ADDR='127.0.0.1:8951'
@@ -91,140 +208,22 @@ $env:RABBITMQ_PORT='5673'
 C:\Users\14224\.jdks\ms-17.0.18\bin\java.exe
 ```
 
-## 4. 2026-06-19 进展快照
-
-P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件上传、预览、下载链路、RabbitMQ 审批通知异步化、Playwright microservice 前端冒烟和 XXL-JOB 考勤结算也已通过，下一步进入 Elasticsearch 制度文档检索。
-
-本轮完成：
-
-* approval-service 提交审批时创建审批节点、调用 message-service 生成待办和通知。
-* approval-service 审批通过、驳回、撤回、关闭时完成待办并更新审批节点。
-* approval-service 对 message-service Feign 命令返回值做成功校验，消息链路失败时抛出业务异常。
-* smart-office-web 审批中心支持保存草稿、保存并提交、提交草稿、通过、驳回。
-* smart-office-web 新增消息中心，支持待办列表、通知列表、标记完成、标记已读。
-* 新增 approval-service 单元测试覆盖提交、审批通过和消息命令失败。
-* 修复审批内容字段类型：`approval_form.content` 从 `JSON` 调整为 `TEXT`。
-* 新增 `scripts/smoke-p0-approval-message.ps1`，固化审批/消息网关冒烟。
-* file-service 接入 MinIO，支持真实上传、预览 URL、服务端下载。
-* smart-office-web 新增文件中心，支持上传、预览、下载。
-* 新增 `scripts/smoke-p1-file-minio.ps1`，固化文件/MinIO 网关冒烟。
-* message-service 接入 RabbitMQ，审批结果通知异步投递和消费落库。
-* RabbitMQ 已声明通知交换机、通知队列和消费者，投递失败时同步降级保存通知。
-* 新增 `scripts/smoke-p1-message-rabbitmq.ps1`，固化审批通知 RabbitMQ 网关冒烟。
-* system-service 新增 `/api/system/users` 用户分页接口，支撑前端用户管理页从 gateway 访问。
-* common 新增 JavaScript 安全整数序列化策略，Snowflake Long ID 以字符串返回，分页等小数字仍保持 number。
-* smart-office-web 已切到 microservice 模式 Playwright 冒烟，覆盖登录、页面访问、审批、消息、文件上传。
-* attendance-service 接入 XXL-JOB 执行器，新增 `attendanceDailySettlementJob` 和 `attendanceMonthlySummaryJob`。
-* attendance-service 新增内部任务触发接口，支持本地冒烟验证每日缺卡结算和月度统计落库。
-* org-service 新增内部活跃员工 userId 列表接口，供考勤结算按员工维度处理。
-* 新增 `scripts/smoke-p1-attendance-xxl-job.ps1`，固化考勤/XXL-JOB 网关冒烟。
-
-本轮已验证：
-
-* `mvn -pl smart-office-services/smart-office-approval-service -am test`
-* `mvn test`
-* `npm run build`（smart-office-web）
-* `git diff --check`
-* `powershell -ExecutionPolicy Bypass -File scripts/smoke-p0-approval-message.ps1`
-* `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-file-minio.ps1`
-* `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-message-rabbitmq.ps1`
-* `npm run test:e2e:microservice`（`E2E_BASE_URL=http://127.0.0.1:5175`）
-* `mvn -pl smart-office-services/smart-office-attendance-service -am test`
-* `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-attendance-xxl-job.ps1`
-
-## 5. 当前目标与步骤
-
-### 已完成：P0 微服务主链路联调
-
-已验收：
-
-1. Docker 中间件健康。
-2. gateway、auth、system、org、approval、message 健康。
-3. 通过 gateway 使用 `employee/123456` 登录并创建审批草稿。
-4. 提交审批单，approval-service 调用 message-service 生成审批待办。
-5. 通过 gateway 使用 `manager/123456` 登录并处理审批。
-6. manager 待办变为 `DONE`，employee 收到 `Approval passed` 通知。
-7. 冒烟脚本 `scripts/smoke-p0-approval-message.ps1` 通过。
-
-验收标准：
-
-* 所有调用从 `http://127.0.0.1:8000` 进入。
-* 业务服务不依赖前端传入用户 ID。
-* 下游服务只信任 gateway 透传的 `X-User-Id`。
-* `mvn test`、前端构建和核心 HTTP 冒烟都通过。
-
-### 当前进行：P1 中间件能力补齐
-
-已完成：
-
-1. file-service 接入 MinIO 真实上传、下载、预览。
-2. 前端文件中心支持上传、预览、下载。
-3. `scripts/smoke-p1-file-minio.ps1` 覆盖文件/MinIO 网关链路。
-4. message-service 接入 RabbitMQ 审批通知异步化。
-5. `scripts/smoke-p1-message-rabbitmq.ps1` 覆盖审批通知 RabbitMQ 网关链路。
-6. 前端 Playwright 冒烟稳定切到 microservice 模式。
-7. attendance-service 接入 XXL-JOB 每日结算和月度统计。
-
-下一步：
-
-1. search-service 接 Elasticsearch 索引同步和全文检索。
-2. auth-service 补 Redis Token 存储和退出失效。
-
-验收标准：
-
-* 每个中间件至少有一条可演示业务链路。
-* 中间件不可用时，主业务能给出明确错误或降级。
-* 文档记录本机启动方式、配置项和验证命令。
-
-### P2：前端体验补齐
-
-1. 使用 `smart-office-web/.env.microservice` 将 API 代理指向 gateway `8000`。
-2. 调整前端接口路径，优先走微服务已迁移接口。
-3. 已用 Playwright 做登录、页面访问、审批、消息、文件上传冒烟。
-4. 后续补审批详情、考勤记录、制度文档检索等页面。
-5. 后续扩展 Playwright 覆盖考勤记录和制度文档检索。
-
-验收标准：
-
-* 前端不用直接访问各业务服务端口。
-* 登录 token 统一由请求拦截器携带。
-* 页面能完整演示核心办公流程。
-
-### P3：AI 独立增强
-
-1. 迁移 AI 会话、消息、提示词模板到 ai-service。
-2. 接入 Spring AI。
-3. 对制度问答使用 search-service 检索结果作为上下文。
-4. 审批摘要、智能填单、风险提示通过独立接口提供。
-
-验收标准：
-
-* AI 调用失败不影响审批、考勤、组织、消息主流程。
-* AI 能力可以单独关闭或降级。
-
-## 6. 推荐执行顺序
-
-```text
-1. Elasticsearch 制度文档检索
-2. Redis Token 与退出失效
-3. ai-service 独立迁移
-```
-
-每完成一项，都需要同步更新：
-
-* `TODO.md`
-* `docs/microservices-architecture.md`
-* 必要时更新 `README.md`
-
 ## 7. 提交前检查
+
+后端通用检查：
 
 ```powershell
 git diff --check
-mvn -DskipTests compile
 mvn test
 ```
 
-涉及前端或网关链路时，再执行：
+单服务变更优先加一条局部测试：
+
+```powershell
+mvn -pl smart-office-services/smart-office-search-service -am test
+```
+
+涉及前端时：
 
 ```powershell
 cd smart-office-web
@@ -232,3 +231,10 @@ npm run build
 $env:E2E_BASE_URL='http://127.0.0.1:5174'
 npm run test:e2e:microservice
 ```
+
+每完成一项，需要同步更新：
+
+* `TODO.md`
+* `docs/project-roadmap.md`
+* `docs/microservices-architecture.md`
+* 必要时更新 `README.md`

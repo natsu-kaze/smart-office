@@ -2,7 +2,14 @@
 
 ## 当前执行快照（2026-06-19）
 
-当前微服务主链路已经跑通，P1 的 MinIO 文件上传、RabbitMQ 审批通知异步化、前端 microservice Playwright 冒烟和 XXL-JOB 考勤结算已通过。接下来不再扩展单体，主线转为补齐微服务版非 AI 中间件能力，优先补 Elasticsearch 制度文档检索。
+当前开发口径以 [docs/project-roadmap.md](docs/project-roadmap.md) 为准。
+
+当前结论：
+
+* 单体 `smart-office-server` 已作为业务基线保留，后续只做必要修复。
+* 微服务 `smart-office-services` 是主线，新增能力优先落到对应微服务。
+* 非 AI 主流程优先补齐，AI 模块最后独立迁移。
+* 当前最优先任务是 search-service 接 Elasticsearch，完成制度文档索引同步与全文检索。
 
 已完成：
 * [x] approval-service 提交审批时创建审批节点、审批待办和审批通知。
@@ -40,12 +47,13 @@
 
 当前下一步：
 1. search-service 接入 Elasticsearch，补制度文档索引同步与全文检索。
-2. auth-service 接入 Redis Token 存储与退出失效。
-3. 最后迁移 ai-service，AI 不阻塞办公主流程。
+2. auth-service 接入 Redis Token 存储、gateway 二次校验与退出失效。
+3. approval-service 补重复审批/并发审批控制和报销二级审批。
+4. message-service 补考勤异常通知、消费幂等和失败重试。
+5. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
+6. 最后迁移 ai-service，AI 不阻塞办公主流程。
 
 ## 当前目标与步骤
-
-当前开发口径以 [docs/project-roadmap.md](docs/project-roadmap.md) 为准。
 
 当前主线目标：
 
@@ -56,14 +64,27 @@
 * [x] 将前端代理稳定切到 gateway，并补 Playwright microservice 冒烟。
 * [x] 补 attendance-service XXL-JOB 考勤结算与月度统计。
 * [ ] 补 search-service Elasticsearch 索引同步与全文检索。
-* [ ] 补 auth-service Redis Token 存储与退出失效。
+* [ ] 补 auth-service Redis Token 存储、gateway 二次校验与退出失效。
+* [ ] 补 approval-service 重复审批/并发审批控制和报销二级审批。
+* [ ] 补 message-service 考勤异常通知、消费幂等和失败重试。
+* [ ] 补 smart-office-web 制度文档检索、审批详情、考勤记录等页面。
 * [ ] 最后迁移 ai-service，AI 能力不阻塞办公主流程。
 
 推荐执行顺序：
 
 1. Elasticsearch 制度文档检索。
 2. Redis Token 与退出失效。
-3. ai-service 独立迁移。
+3. 审批并发与规则补强。
+4. 消息可靠性与考勤异常通知。
+5. 前端体验补齐。
+6. ai-service 独立迁移。
+
+当前 Elasticsearch 任务验收命令：
+
+* [ ] `mvn -pl smart-office-services/smart-office-search-service -am test`
+* [ ] `mvn test`
+* [ ] `git diff --check`
+* [ ] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-search-elasticsearch.ps1`
 
 下面保留详细模块清单和历史进度，后续每完成一项同步勾选。
 
@@ -116,7 +137,7 @@
 
 第一阶段可以只启动：
 
-* [ ] MySQL
+* [x] MySQL
 * [x] Redis
 
 后续再接入：
@@ -360,18 +381,24 @@
 
 ### Elasticsearch
 
-* [ ] 接入 Elasticsearch
+当前优先：
+
+* [ ] search-service 接入 Elasticsearch
+* [ ] 创建制度文档索引
+* [ ] 同步制度文档数据到 ES
+* [ ] 制度文档搜索接口
+* [ ] 新增制度文档 ES 冒烟脚本
+
+后续扩展：
+
 * [ ] 创建员工索引
 * [ ] 创建审批单索引
-* [ ] 创建制度文档索引
 * [ ] 同步员工数据到 ES
 * [ ] 同步审批单数据到 ES
-* [ ] 同步制度文档数据到 ES
 * [ ] 员工搜索接口
 * [ ] 审批单搜索接口
-* [ ] 制度文档搜索接口
 
-第一阶段可先实现 MySQL LIKE 搜索，后续替换为 ES。
+当前已有 MySQL LIKE 搜索，下一步替换为 ES 优先、MySQL 降级。
 
 ## 10. XXL-JOB 定时任务
 
@@ -599,7 +626,7 @@ finance / 123456
 * [x] 已加入 Playwright 浏览器冒烟自测，覆盖登录、主页面访问、新建审批弹窗、考勤按钮可见性
 * [x] 已完成 microservice 模式 Playwright 冒烟，覆盖 gateway 登录、审批提交与审批通过、消息通知、文件上传
 
-### 下一步建议
+### 下一步建议（历史快照，当前以文档顶部为准）
 
 1. 接入 Elasticsearch：制度文档索引同步与全文检索。
 2. 接入 Redis Token：登录态存储、退出失效、后续再补刷新策略。
@@ -615,7 +642,7 @@ finance / 123456
 * [x] system-service 数据库联调：已从 Nacos 加载 MyBatis 配置并连接 `smart_office_system`
 * [x] gateway + Nacos + MySQL 完整登录链路联调
 
-下一步：
+下一步（历史快照，当前以文档顶部为准）：
 
 1. 联调 approval/message，验证审批提交后生成待办与通知。
 2. 前端代理切到 gateway，补 Playwright 网关冒烟。
@@ -660,7 +687,7 @@ finance / 123456
 * [x] search-service 已迁移制度文档分页、创建、更新、详情、删除，切到 `smart_office_search`。
 * [ ] ai-service 仍保持占位，后续单独接 AI 会话、提示词与知识问答。
 
-下一步：
+下一步（历史快照，当前以文档顶部为准）：
 
 1. search-service 接 Elasticsearch 索引同步与全文检索。
 2. auth-service 接 Redis Token 存储与退出失效。
@@ -677,7 +704,7 @@ finance / 123456
 * [x] 已通过 `mvn -DskipTests compile`、`mvn -DskipTests package`、`mvn test`。
 * [x] 前端已通过 microservice 模式 Playwright 冒烟，从 gateway 覆盖登录、审批、消息、文件上传。
 
-下一步：
+下一步（历史快照，当前以文档顶部为准）：
 
 1. 开始补 Elasticsearch 制度文档索引同步与全文检索。
 2. 继续补 Redis Token 这些中间件型能力。

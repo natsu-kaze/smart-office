@@ -184,6 +184,8 @@ npm run test:e2e:microservice
 ## 8. 后续顺序
 
 1. search-service 接入 Elasticsearch 索引同步和全文检索。
-2. auth-service 补 Redis Token 存储和退出失效。
-3. RabbitMQ 后续扩展考勤异常通知和消费幂等。
-4. ai-service 独立迁移，保持 AI 不阻塞主业务流程。
+2. auth-service 补 Redis Token 存储、gateway 二次校验和退出失效。
+3. approval-service 补重复审批、并发审批控制和报销二级审批。
+4. message-service 扩展考勤异常通知、消费幂等和失败重试。
+5. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
+6. ai-service 独立迁移，保持 AI 不阻塞主业务流程。
