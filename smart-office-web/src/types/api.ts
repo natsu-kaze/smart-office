@@ -5,6 +5,8 @@ export interface Result<T = unknown> {
   timestamp: string
 }
 
+export type ApiId = string | number
+
 export interface PageResult<T> {
   records: T[]
   total: number
@@ -18,7 +20,7 @@ export interface LoginRequest {
 }
 
 export interface AuthUser {
-  id: number
+  id: ApiId
   username: string
   realName: string
   phone?: string
@@ -35,7 +37,7 @@ export interface LoginResponse {
 }
 
 export interface UserItem {
-  id: number
+  id: ApiId
   username: string
   realName: string
   phone?: string
@@ -45,8 +47,8 @@ export interface UserItem {
 }
 
 export interface DepartmentNode {
-  id: number
-  parentId: number
+  id: ApiId
+  parentId: ApiId
   departmentCode: string
   departmentName: string
   leaderName?: string
@@ -55,16 +57,16 @@ export interface DepartmentNode {
 }
 
 export interface ApprovalItem {
-  id: number
+  id: ApiId
   approvalType: string
   title: string
-  applicantUserId: number
+  applicantUserId: ApiId
   applicantName: string
   applicantDeptName?: string
   content?: string
   amount?: number
   status: string
-  currentApproverId?: number
+  currentApproverId?: ApiId
   currentApproverName?: string
   submittedAt?: string
   completedAt?: string
@@ -78,21 +80,21 @@ export interface AttendanceToday {
 }
 
 export interface MessageNotice {
-  id: number
+  id: ApiId
   title: string
   content: string
   businessType?: string
-  businessId?: number
+  businessId?: ApiId
   readStatus: number
   readTime?: string
   createTime?: string
 }
 
 export interface MessageTodo {
-  id: number
+  id: ApiId
   title: string
   businessType: string
-  businessId: number
+  businessId: ApiId
   status: string
   dueTime?: string
   completedTime?: string
@@ -100,7 +102,7 @@ export interface MessageTodo {
 }
 
 export interface FileRecord {
-  id: number
+  id: ApiId
   originalName: string
   storageName: string
   bucket: string
@@ -108,7 +110,7 @@ export interface FileRecord {
   contentType?: string
   size: number
   url?: string
-  uploaderId?: number
+  uploaderId?: ApiId
   businessType?: string
-  businessId?: number
+  businessId?: ApiId
 }

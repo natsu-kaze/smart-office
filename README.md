@@ -417,8 +417,9 @@ $env:RABBITMQ_PORT='5673'
 
 1. 已完成 gateway 登录、鉴权、身份透传和 approval/message 主链路冒烟。
 2. 已完成 file-service MinIO 上传、预览、下载和前端文件中心。
-3. 已完成 message-service RabbitMQ 审批通知异步化和冒烟脚本。
-4. 当前优先补 Playwright microservice 冒烟、XXL-JOB 考勤结算、Elasticsearch 制度文档检索、Redis Token 与退出失效。
-5. AI 模块最后独立迁移，且不阻塞审批、考勤、组织、消息等主流程。
+3. 已完成 message-service RabbitMQ 审批通知异步投递、消费落库、失败同步降级和冒烟脚本。
+4. 已完成 smart-office-web microservice 模式 Playwright 冒烟，覆盖登录、页面访问、审批、消息、文件上传。
+5. 当前优先补 XXL-JOB 考勤结算、Elasticsearch 制度文档检索、Redis Token 与退出失效。
+6. AI 模块最后独立迁移，且不阻塞审批、考勤、组织、消息等主流程。
 
 更细的目标、步骤和验收命令见 [docs/project-roadmap.md](docs/project-roadmap.md) 与 [TODO.md](TODO.md)。

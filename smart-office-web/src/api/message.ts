@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { MessageNotice, MessageTodo, PageResult } from '@/types/api'
+import type { ApiId, MessageNotice, MessageTodo, PageResult } from '@/types/api'
 
 export function getUnreadCount() {
   return request.get<number>('/api/messages/unread-count')
@@ -17,10 +17,10 @@ export function getMessageTodos(params: Record<string, unknown>) {
   return request.get<PageResult<MessageTodo>>('/api/messages/todos', { params })
 }
 
-export function markMessageRead(id: number) {
+export function markMessageRead(id: ApiId) {
   return request.patch(`/api/messages/${id}/read`)
 }
 
-export function completeMessageTodo(id: number) {
+export function completeMessageTodo(id: ApiId) {
   return request.patch(`/api/messages/todos/${id}/complete`)
 }

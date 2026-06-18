@@ -93,7 +93,7 @@ C:\Users\14224\.jdks\ms-17.0.18\bin\java.exe
 
 ## 4. 2026-06-18 进展快照
 
-P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件上传、预览、下载链路和 RabbitMQ 审批通知异步化也已通过，下一步进入 Playwright microservice 冒烟和 XXL-JOB 考勤结算。
+P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件上传、预览、下载链路、RabbitMQ 审批通知异步化和 Playwright microservice 前端冒烟也已通过，下一步进入 XXL-JOB 考勤结算。
 
 本轮完成：
 
@@ -111,6 +111,9 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 * message-service 接入 RabbitMQ，审批结果通知异步投递和消费落库。
 * RabbitMQ 已声明通知交换机、通知队列和消费者，投递失败时同步降级保存通知。
 * 新增 `scripts/smoke-p1-message-rabbitmq.ps1`，固化审批通知 RabbitMQ 网关冒烟。
+* system-service 新增 `/api/system/users` 用户分页接口，支撑前端用户管理页从 gateway 访问。
+* common 新增 JavaScript 安全整数序列化策略，Snowflake Long ID 以字符串返回，分页等小数字仍保持 number。
+* smart-office-web 已切到 microservice 模式 Playwright 冒烟，覆盖登录、页面访问、审批、消息、文件上传。
 
 本轮已验证：
 
@@ -121,6 +124,7 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 * `powershell -ExecutionPolicy Bypass -File scripts/smoke-p0-approval-message.ps1`
 * `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-file-minio.ps1`
 * `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-message-rabbitmq.ps1`
+* `npm run test:e2e:microservice`（`E2E_BASE_URL=http://127.0.0.1:5174`）
 
 ## 5. 当前目标与步骤
 
@@ -152,13 +156,13 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 3. `scripts/smoke-p1-file-minio.ps1` 覆盖文件/MinIO 网关链路。
 4. message-service 接入 RabbitMQ 审批通知异步化。
 5. `scripts/smoke-p1-message-rabbitmq.ps1` 覆盖审批通知 RabbitMQ 网关链路。
+6. 前端 Playwright 冒烟稳定切到 microservice 模式。
 
 下一步：
 
-1. 将前端 Playwright 冒烟稳定切到 microservice 模式。
-2. attendance-service 接 XXL-JOB 每日结算和月度统计。
-3. search-service 接 Elasticsearch 索引同步和全文检索。
-4. auth-service 补 Redis Token 存储和退出失效。
+1. attendance-service 接 XXL-JOB 每日结算和月度统计。
+2. search-service 接 Elasticsearch 索引同步和全文检索。
+3. auth-service 补 Redis Token 存储和退出失效。
 
 验收标准：
 
@@ -170,8 +174,9 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 
 1. 使用 `smart-office-web/.env.microservice` 将 API 代理指向 gateway `8000`。
 2. 调整前端接口路径，优先走微服务已迁移接口。
-3. 补审批详情、考勤记录、制度文档检索等页面。
-4. 用 Playwright 做登录、审批、消息、考勤、文件、制度文档冒烟。
+3. 已用 Playwright 做登录、页面访问、审批、消息、文件上传冒烟。
+4. 后续补审批详情、考勤记录、制度文档检索等页面。
+5. 后续扩展 Playwright 覆盖考勤记录和制度文档检索。
 
 验收标准：
 
@@ -194,11 +199,10 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 ## 6. 推荐执行顺序
 
 ```text
-1. Playwright microservice 冒烟
-2. XXL-JOB 考勤结算
-3. Elasticsearch 制度文档检索
-4. Redis Token 与退出失效
-5. ai-service 独立迁移
+1. XXL-JOB 考勤结算
+2. Elasticsearch 制度文档检索
+3. Redis Token 与退出失效
+4. ai-service 独立迁移
 ```
 
 每完成一项，都需要同步更新：
@@ -220,5 +224,6 @@ mvn test
 ```powershell
 cd smart-office-web
 npm run build
-npm run test:e2e
+$env:E2E_BASE_URL='http://127.0.0.1:5174'
+npm run test:e2e:microservice
 ```

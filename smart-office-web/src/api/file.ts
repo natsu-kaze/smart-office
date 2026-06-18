@@ -1,11 +1,11 @@
 import request from '@/utils/request'
-import type { FileRecord, PageResult } from '@/types/api'
+import type { ApiId, FileRecord, PageResult } from '@/types/api'
 
 export function getMyFiles(params: Record<string, unknown>) {
   return request.get<PageResult<FileRecord>>('/api/files', { params })
 }
 
-export function uploadFile(file: File, businessType?: string, businessId?: number) {
+export function uploadFile(file: File, businessType?: string, businessId?: ApiId) {
   const data = new FormData()
   data.append('file', file)
   if (businessType) {
@@ -17,10 +17,10 @@ export function uploadFile(file: File, businessType?: string, businessId?: numbe
   return request.post<FileRecord>('/api/files/upload', data)
 }
 
-export function getFilePreviewUrl(id: number) {
+export function getFilePreviewUrl(id: ApiId) {
   return request.get<string>(`/api/files/${id}/preview`)
 }
 
-export function downloadFile(id: number) {
+export function downloadFile(id: ApiId) {
   return request.get<Blob>(`/api/files/${id}/download`, { responseType: 'blob' })
 }

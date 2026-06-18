@@ -2,7 +2,7 @@
 
 ## 当前执行快照（2026-06-18）
 
-当前微服务主链路已经跑通，P1 的 MinIO 文件上传链路和 RabbitMQ 审批通知异步化也已通过。接下来不再扩展单体，主线转为补齐微服务版非 AI 中间件能力，优先补 Playwright microservice 冒烟和 XXL-JOB 考勤结算。
+当前微服务主链路已经跑通，P1 的 MinIO 文件上传、RabbitMQ 审批通知异步化和前端 microservice Playwright 冒烟已通过。接下来不再扩展单体，主线转为补齐微服务版非 AI 中间件能力，优先补 XXL-JOB 考勤结算。
 
 已完成：
 * [x] approval-service 提交审批时创建审批节点、审批待办和审批通知。
@@ -19,6 +19,9 @@
 * [x] message-service 接入 RabbitMQ，审批结果通知改为异步投递和消费落库。
 * [x] 新增 RabbitMQ 通知交换机、队列、消费者配置和投递失败同步降级策略。
 * [x] 新增 `scripts/smoke-p1-message-rabbitmq.ps1`，固化审批通知 RabbitMQ 网关冒烟链路。
+* [x] system-service 新增 `/api/system/users` 用户分页接口，支持前端用户管理页从 gateway 访问。
+* [x] common 新增 JavaScript 安全整数序列化策略，避免 Snowflake Long ID 在前端精度丢失。
+* [x] smart-office-web microservice 模式补齐 Playwright 冒烟，覆盖登录、页面访问、审批、消息、文件上传。
 
 已验证：
 * [x] `mvn -pl smart-office-services/smart-office-approval-service -am test`
@@ -28,13 +31,13 @@
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p0-approval-message.ps1`
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-file-minio.ps1`
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-message-rabbitmq.ps1`
+* [x] `npm run test:e2e:microservice`（`E2E_BASE_URL=http://127.0.0.1:5174`）
 
 当前下一步：
-1. 将 Playwright 冒烟切到 `--mode microservice`，覆盖登录、审批、消息、文件中心。
-2. attendance-service 接入 XXL-JOB，补每日考勤结算与月度统计。
-3. search-service 接入 Elasticsearch，补制度文档索引同步与全文检索。
-4. auth-service 接入 Redis Token 存储与退出失效。
-5. 最后迁移 ai-service，AI 不阻塞办公主流程。
+1. attendance-service 接入 XXL-JOB，补每日考勤结算与月度统计。
+2. search-service 接入 Elasticsearch，补制度文档索引同步与全文检索。
+3. auth-service 接入 Redis Token 存储与退出失效。
+4. 最后迁移 ai-service，AI 不阻塞办公主流程。
 
 ## 当前目标与步骤
 
@@ -46,7 +49,7 @@
 * [x] 验证审批提交后生成待办，审批处理后完成待办并生成通知。
 * [x] 补 file-service 真实 MinIO 上传、下载、预览。
 * [x] 补 message-service RabbitMQ 异步通知。
-* [ ] 将前端代理稳定切到 gateway，并补 Playwright microservice 冒烟。
+* [x] 将前端代理稳定切到 gateway，并补 Playwright microservice 冒烟。
 * [ ] 补 attendance-service XXL-JOB 考勤结算与月度统计。
 * [ ] 补 search-service Elasticsearch 索引同步与全文检索。
 * [ ] 补 auth-service Redis Token 存储与退出失效。
@@ -54,11 +57,10 @@
 
 推荐执行顺序：
 
-1. Playwright microservice 冒烟。
-2. XXL-JOB 考勤结算。
-3. Elasticsearch 制度文档检索。
-4. Redis Token 与退出失效。
-5. ai-service 独立迁移。
+1. XXL-JOB 考勤结算。
+2. Elasticsearch 制度文档检索。
+3. Redis Token 与退出失效。
+4. ai-service 独立迁移。
 
 下面保留详细模块清单和历史进度，后续每完成一项同步勾选。
 
@@ -592,13 +594,13 @@ finance / 123456
 * [x] Docker 中间件统一启动完成，当前本机端口见 `docs/project-roadmap.md`
 * [x] 前端 `smart-office-web` 已初始化，完成登录、工作台、用户列表、组织架构、审批中心、今日考勤基础页面
 * [x] 已加入 Playwright 浏览器冒烟自测，覆盖登录、主页面访问、新建审批弹窗、考勤按钮可见性
+* [x] 已完成 microservice 模式 Playwright 冒烟，覆盖 gateway 登录、审批提交与审批通过、消息通知、文件上传
 
 ### 下一步建议
 
-1. 前端代理稳定切到 gateway:8000，并补完整 Playwright microservice 冒烟测试。
-2. 接入 XXL-JOB：每日考勤结算、月度统计、审批超时扫描。
-3. 接入 Elasticsearch：制度文档索引同步与全文检索。
-4. 接入 Redis Token：登录态存储、退出失效、后续再补刷新策略。
+1. 接入 XXL-JOB：每日考勤结算、月度统计、审批超时扫描。
+2. 接入 Elasticsearch：制度文档索引同步与全文检索。
+3. 接入 Redis Token：登录态存储、退出失效、后续再补刷新策略。
 ## 18. 微服务版本迁移进度
 
 * [x] common 已补齐统一返回、分页、业务异常、全局异常处理、BaseEntity、MyBatis-Plus 分页/乐观锁/自动填充配置
@@ -658,9 +660,9 @@ finance / 123456
 
 下一步：
 
-1. 前端 microservice 模式补 Playwright 冒烟，覆盖审批、消息、文件中心。
-2. attendance-service 接 XXL-JOB 每日结算和月度统计。
-3. search-service 接 Elasticsearch 索引同步与全文检索。
+1. attendance-service 接 XXL-JOB 每日结算和月度统计。
+2. search-service 接 Elasticsearch 索引同步与全文检索。
+3. auth-service 接 Redis Token 存储与退出失效。
 4. 最后迁 ai-service，占位不阻塞当前办公主流程。
 
 ## 21. gateway 鉴权与业务服务迁移进度
@@ -672,8 +674,9 @@ finance / 123456
 * [x] org-service 已新增内部接口 `/internal/org/employees/department/{departmentId}/user-ids`，供 attendance-service 查询部门用户。
 * [x] 已用 Docker 中间件 + 临时 Java 17 进程完成 gateway 冒烟：未带 token 返回 401，登录成功，`/api/auth/me`、`/api/attendance/today`、文件记录创建/详情、制度文档创建/分页均通过。
 * [x] 已通过 `mvn -DskipTests compile`、`mvn -DskipTests package`、`mvn test`。
+* [x] 前端已通过 microservice 模式 Playwright 冒烟，从 gateway 覆盖登录、审批、消息、文件上传。
 
 下一步：
 
-1. 将前端代理从单体稳定切到 gateway，补一轮 Playwright microservice 冒烟。
-2. 开始补 XXL-JOB 考勤结算、ES 检索、Redis Token 这些中间件型能力。
+1. 开始补 XXL-JOB 考勤结算。
+2. 继续补 ES 检索、Redis Token 这些中间件型能力。

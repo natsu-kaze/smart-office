@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "dev:microservice": "vite --host 0.0.0.0 --mode microservice",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test:e2e": "playwright test",
+    "test:e2e:microservice": "playwright test",
     "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {

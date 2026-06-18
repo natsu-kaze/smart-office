@@ -110,6 +110,9 @@ gateway 负责统一入口和身份透传：
 * 前端新增文件中心，支持文件上传、预览、下载。
 * message-service 已接入 RabbitMQ，审批结果通知异步投递到通知队列并由消费者落库。
 * RabbitMQ 通知链路具备投递失败同步降级，避免 MQ 不可用时静默丢通知。
+* system-service 已补 `/api/system/users` 用户分页接口，前端用户管理页可通过 gateway 访问。
+* common 已补 JavaScript 安全整数序列化，避免 Snowflake Long ID 在浏览器侧精度丢失。
+* smart-office-web 已补 microservice 模式 Playwright 冒烟。
 
 已验证：
 
@@ -131,10 +134,12 @@ gateway 负责统一入口和身份透传：
   * approval/message P0 主链路通过。
   * RabbitMQ 通知队列为 durable。
   * 通知消费者已连接，消息消费后无积压。
-
-待验证：
-
-* `smart-office-web` 使用 `npm run dev -- --mode microservice` 连接 gateway 后的 Playwright 冒烟。
+* `smart-office-web` 使用 `npm run dev:microservice` 连接 gateway 后的 Playwright 冒烟已通过：
+  * `admin/123456` 登录后访问工作台、用户管理、组织架构、审批、消息、文件、考勤页面。
+  * `employee/123456` 新建并提交审批。
+  * `manager/123456` 审批通过。
+  * employee 在消息中心看到审批通过通知。
+  * employee 在文件中心上传文件并看到记录。
 
 ## 7. 推荐启动顺序
 
@@ -159,14 +164,21 @@ mvn -pl smart-office-services/smart-office-gateway spring-boot:run
 
 ```powershell
 cd smart-office-web
-npm run dev -- --mode microservice
+npm run dev:microservice
+```
+
+前端 Playwright microservice 冒烟：
+
+```powershell
+cd smart-office-web
+$env:E2E_BASE_URL='http://127.0.0.1:5174'
+npm run test:e2e:microservice
 ```
 
 ## 8. 后续顺序
 
-1. 将 Playwright 冒烟切到 microservice 模式，覆盖登录、审批、消息、文件中心。
-2. attendance-service 接入 XXL-JOB 每日结算和月度统计。
-3. RabbitMQ 后续扩展考勤异常通知和消费幂等。
-4. search-service 接入 Elasticsearch 索引同步和全文检索。
-5. auth-service 补 Redis Token 存储和退出失效。
-6. ai-service 独立迁移，保持 AI 不阻塞主业务流程。
+1. attendance-service 接入 XXL-JOB 每日结算和月度统计。
+2. RabbitMQ 后续扩展考勤异常通知和消费幂等。
+3. search-service 接入 Elasticsearch 索引同步和全文检索。
+4. auth-service 补 Redis Token 存储和退出失效。
+5. ai-service 独立迁移，保持 AI 不阻塞主业务流程。

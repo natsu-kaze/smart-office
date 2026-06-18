@@ -78,7 +78,7 @@ import {
   getUnreadCount,
   markMessageRead,
 } from '@/api/message'
-import type { MessageNotice, MessageTodo } from '@/types/api'
+import type { ApiId, MessageNotice, MessageTodo } from '@/types/api'
 
 const todos = ref<MessageTodo[]>([])
 const messages = ref<MessageNotice[]>([])
@@ -101,13 +101,13 @@ async function load() {
   }
 }
 
-async function handleCompleteTodo(id: number) {
+async function handleCompleteTodo(id: ApiId) {
   await completeMessageTodo(id)
   ElMessage.success('待办已完成')
   await load()
 }
 
-async function handleRead(id: number) {
+async function handleRead(id: ApiId) {
   await markMessageRead(id)
   ElMessage.success('消息已读')
   await load()
