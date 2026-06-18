@@ -1,5 +1,57 @@
 # TODO
 
+## 当前执行快照（2026-06-18）
+
+本轮已推进 P0 的代码闭环，运行时 gateway 联调还需要下一轮启动服务后验证。
+
+已完成：
+* [x] approval-service 提交审批时创建审批节点、审批待办和审批通知。
+* [x] approval-service 审批通过 / 驳回 / 撤回 / 关闭时同步完成待办并更新审批节点。
+* [x] approval-service 对 message-service Feign 命令返回值做成功校验，避免消息链路失败后静默提交。
+* [x] smart-office-web 审批中心支持保存草稿、保存并提交、提交草稿、审批通过、审批驳回。
+* [x] smart-office-web 新增消息中心，支持查看待办、查看通知、标记待办完成、标记通知已读。
+* [x] 新增 approval-service 单元测试覆盖提交、审批通过、消息命令失败三条链路。
+
+已验证：
+* [x] `mvn -pl smart-office-services/smart-office-approval-service -am test`
+* [x] `mvn test`
+* [x] `npm run build`（smart-office-web）
+* [x] `git diff --check`
+
+下一步：
+1. 启动 gateway、auth、system、org、approval、message，做真实 HTTP 冒烟。
+2. 用 employee 创建并提交审批，用 manager 审批，验证 manager 待办完成、employee 通知生成。
+3. 将 Playwright 冒烟切到 `--mode microservice`，覆盖审批和消息中心。
+4. P0 运行时验证通过后，进入 P1：MinIO 文件上传。
+
+## 当前目标与步骤
+
+当前开发口径以 [docs/project-roadmap.md](docs/project-roadmap.md) 为准。
+
+当前主线目标：
+
+* [ ] 跑通微服务版审批主链路：gateway -> auth/system/org/approval/message。
+* [ ] 验证审批提交后生成待办，审批处理后完成待办并生成通知。
+* [ ] 将前端代理逐步切到 gateway，并补 Playwright 网关冒烟。
+* [ ] 补 file-service 真实 MinIO 上传、下载、预览。
+* [ ] 补 message-service RabbitMQ 异步通知。
+* [ ] 补 attendance-service XXL-JOB 考勤结算与月度统计。
+* [ ] 补 search-service Elasticsearch 索引同步与全文检索。
+* [ ] 最后迁移 ai-service，AI 能力不阻塞办公主流程。
+
+推荐执行顺序：
+
+1. approval/message 网关联调。
+2. 前端切 gateway。
+3. MinIO 文件上传。
+4. RabbitMQ 消息异步化。
+5. XXL-JOB 考勤结算。
+6. Elasticsearch 制度文档检索。
+7. Redis Token 与退出失效。
+8. ai-service 独立迁移。
+
+下面保留详细模块清单和历史进度，后续每完成一项同步勾选。
+
 ## 0. 项目初始化
 
 * [x] 创建后端项目 `smart-office-server`
@@ -500,10 +552,10 @@ finance / 123456
 * [x] Gateway
 * [x] Nacos
 * [x] OpenFeign
-* [ ] 微服务拆分
+* [x] 微服务拆分基础结构与核心业务迁移
 * [ ] Sentinel 限流熔断
 
-## 16. Codex 开发建议顺序
+## 16. Codex 开发建议顺序（历史记录）
 
 1. 先生成数据库表结构和实体类。
 2. 再生成基础 CRUD。
@@ -516,7 +568,7 @@ finance / 123456
 9. 接入定时任务。
 10. 最后接入 AI 办公助手。
 
-不要一开始就做微服务拆分，也不要一开始就接入全部中间件。
+说明：这一段是项目早期建议。当前已经进入微服务联调阶段，新的执行顺序以本文顶部和 `docs/project-roadmap.md` 为准。
 
 ## 17. 当前进度与下一步
 
@@ -526,17 +578,15 @@ finance / 123456
 * [x] 微服务父工程与服务骨架已完成，包含 common、api、gateway、auth、system、org、approval、attendance、message、file、search、ai 模块
 * [x] 审批状态机、考勤状态、业务类型已整理为枚举
 * [x] MySQL / Redis / Nacos / RabbitMQ / Elasticsearch / MinIO / XXL-JOB Docker Compose 配置已完成，MySQL 默认密码 `123456`
-* [ ] 统一端口实测启动完成：当前 Redis / Nacos / Elasticsearch / MinIO 已启动，MySQL `3306` 与 RabbitMQ `5672` 仍被宿主机进程占用
+* [x] Docker 中间件统一启动完成，当前本机端口见 `docs/project-roadmap.md`
 * [x] 前端 `smart-office-web` 已初始化，完成登录、工作台、用户列表、组织架构、审批中心、今日考勤基础页面
 * [x] 已加入 Playwright 浏览器冒烟自测，覆盖登录、主页面访问、新建审批弹窗、考勤按钮可见性
 
 ### 下一步建议
 
-1. 先迁 system-service：拆出用户、角色、菜单实体、Mapper、Service、Controller，并补内部用户查询 Feign 实现。
-2. 再迁 auth-service：拆出登录认证、JWT、安全过滤器，并通过 Feign 调 system-service 获取用户信息。
-3. 接着迁 org-service：拆公司、部门、岗位、员工，并处理与 system-service 用户信息的依赖。
-4. 然后迁 approval / attendance / message：优先跑通审批提交、待办生成、考勤打卡这条主链路。
-5. 业务服务迁完后，前端代理切到 gateway:9000，再补完整 Playwright 网关冒烟测试。
+1. 联调 approval/message，跑通审批提交、待办生成、审批处理、通知生成。
+2. 前端代理切到 gateway:8000，并补完整 Playwright 网关冒烟测试。
+3. 补 MinIO、RabbitMQ、XXL-JOB、Elasticsearch、Redis Token。
 ## 18. 微服务版本迁移进度
 
 * [x] common 已补齐统一返回、分页、业务异常、全局异常处理、BaseEntity、MyBatis-Plus 分页/乐观锁/自动填充配置
@@ -546,14 +596,14 @@ finance / 123456
 * [x] 所有启用 OpenFeign 的业务服务已补 `spring-cloud-starter-loadbalancer`，避免运行时报缺少负载均衡客户端
 * [x] 已通过 `mvn -DskipTests compile` 与 `mvn test`
 * [x] 已用 JDK 21 临时启动验证 auth-service，`/actuator/health` 返回 UP
-* [ ] system-service 数据库联调：服务可启动，当前 `/actuator/health` 因 Docker/MySQL 未连通返回 DOWN
-* [ ] gateway + Nacos + MySQL 完整登录链路联调
+* [x] system-service 数据库联调：已从 Nacos 加载 MyBatis 配置并连接 `smart_office_system`
+* [x] gateway + Nacos + MySQL 完整登录链路联调
 
 下一步：
 
-1. 先恢复当前终端 Docker CLI 与 Docker Desktop 的连接，启动 MySQL / Nacos。
-2. 启动 system-service、auth-service、gateway，验证 `/api/auth/login` 能通过 gateway 登录。
-3. 继续迁移 org-service，补公司、部门、岗位、员工基础查询与管理接口。
+1. 联调 approval/message，验证审批提交后生成待办与通知。
+2. 前端代理切到 gateway，补 Playwright 网关冒烟。
+3. 按路线图继续补 MinIO、RabbitMQ、XXL-JOB、Elasticsearch。
 ## 19. org-service 迁移进度
 
 * [x] org-service 已补齐 MyBatis-Plus / MySQL / Lombok 依赖与数据源配置
@@ -564,15 +614,14 @@ finance / 123456
 * [x] 已通过 `mvn -pl smart-office-services/smart-office-org-service -am -DskipTests compile`
 * [x] 已通过 `mvn -DskipTests compile` 与 `mvn test`
 * [x] org-service 已用 JDK 21 临时启动，Spring 容器可启动
-* [ ] org-service 数据库联调：当前 `/actuator/health` 因 Docker/MySQL 未连通返回 DOWN
-* [ ] org-service + system-service Feign 运行态联调
+* [x] org-service 数据库联调：已切到 `smart_office_org`
+* [x] org-service + system-service Feign 运行态联调
 
-当前环境卡点：
+当前环境说明：
 
-* 当前终端无法连接 Docker Desktop pipe，`docker version` 报 `dockerDesktopLinuxEngine` pipe 不存在。
-* 当前终端无权限启动 `com.docker.service`。
-* `5672` 当前被本机 `erl.exe` 占用，后续 RabbitMQ 容器仍需释放端口。
-* 命令行 `java` 默认仍是 JDK 11，Maven 使用 JDK 21；运行 Spring Boot 3 服务需显式使用 JDK 17/21。
+* Docker Desktop 已可正常使用。
+* Docker 中间件使用本机可用端口：Nacos `8951/9951`、Redis `6380`、RabbitMQ `5673`、Elasticsearch transport `9459`。
+* 命令行 `java` 默认可能仍是 JDK 11，Maven 使用 JDK 21；运行 Spring Boot 3 服务需显式使用 JDK 17/21。
 
 ## 20. 微服务独立库与 Nacos 配置进度
 

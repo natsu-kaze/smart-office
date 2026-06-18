@@ -1,36 +1,31 @@
-# Smart Office 微服务架构草案
+# Smart Office 微服务架构说明
 
-## 当前策略
+本文记录 `smart-office-services` 的当前微服务拆分、运行约定和迁移进度。当前主线是微服务联调，`smart-office-server` 继续保留为单体业务基线。
 
-当前仓库进入微服务演进阶段，但不直接删除已有 `smart-office-server`。现有单体继续作为业务可运行基线，新建微服务模块先确定工程结构、服务边界、网关、注册发现、OpenFeign 契约和公共模块。
-
-后续业务代码按模块逐步从 `smart-office-server` 迁移到对应服务，迁移完成并通过端到端测试后，再移除单体模块。
-
-## Maven 模块
+## 1. 模块结构
 
 ```text
 smart-office
-├─ smart-office-common              公共返回、错误码、服务名常量
+├─ smart-office-common              公共返回、错误码、枚举、MyBatis-Plus 配置
 ├─ smart-office-api                 跨服务 DTO 与 OpenFeign Client
-├─ smart-office-server              现有单体业务基线
-.0
+├─ smart-office-server              单体业务基线
 └─ smart-office-services
    ├─ smart-office-gateway          Spring Cloud Gateway
-   ├─ smart-office-auth-service     认证服务
-   ├─ smart-office-system-service   用户、角色、菜单服务
-   ├─ smart-office-org-service      公司、部门、岗位、员工服务
-   ├─ smart-office-approval-service 审批服务
-   ├─ smart-office-attendance-service 考勤服务
-   ├─ smart-office-message-service  消息与待办服务
-   ├─ smart-office-file-service     文件服务
-   ├─ smart-office-search-service   制度文档与搜索服务
-   └─ smart-office-ai-service       AI 办公助手服务
+   ├─ smart-office-auth-service     登录、JWT、当前用户
+   ├─ smart-office-system-service   用户、角色、用户角色
+   ├─ smart-office-org-service      公司、部门、岗位、员工
+   ├─ smart-office-approval-service 审批单、审批节点、审批记录
+   ├─ smart-office-attendance-service 考勤规则、打卡、统计
+   ├─ smart-office-message-service  通知与待办
+   ├─ smart-office-file-service     文件记录
+   ├─ smart-office-search-service   制度文档检索
+   └─ smart-office-ai-service       AI 占位，后续独立增强
 ```
 
-## 服务端口
+## 2. 服务端口
 
 | 服务 | 端口 |
-|---|---:|
+| --- | ---: |
 | gateway | 8000 |
 | auth-service | 9101 |
 | system-service | 9102 |
@@ -42,167 +37,23 @@ smart-office
 | search-service | 9108 |
 | ai-service | 9109 |
 
-## 网关路由
+## 3. 中间件端口
 
-| 路径 | 目标服务 |
-|---|---|
-| `/api/auth/**` | auth-service |
-| `/api/system/**` | system-service |
-| `/api/org/**` | org-service |
-| `/api/approvals/**` | approval-service |
-| `/api/attendance/**` | attendance-service |
-| `/api/messages/**` | message-service |
-| `/api/files/**` | file-service |
-| `/api/policies/**` | search-service |
-| `/api/ai/**` | ai-service |
+| 中间件 | 宿主端口 |
+| --- | ---: |
+| MySQL | 3306 |
+| Redis | 6380 |
+| RabbitMQ | 5673 |
+| RabbitMQ Management | 15672 |
+| Nacos HTTP | 8951 |
+| Nacos gRPC | 9951 |
+| Elasticsearch HTTP | 9200 |
+| Elasticsearch transport | 9459 |
+| MinIO API | 9000 |
+| MinIO Console | 9001 |
+| XXL-JOB Admin | 8088 |
 
-## 本地启动顺序
-
-1. 启动 Docker 依赖：
-
-   ```powershell
-   cd docker
-   docker compose up -d mysql redis nacos rabbitmq elasticsearch minio xxl-job-admin
-   ```
-
-2. 启动网关：
-
-   ```powershell
-   mvn -q install -DskipTests
-   mvn -pl smart-office-services/smart-office-gateway spring-boot:run
-   ```
-
-3. 启动需要调试的业务服务，例如：
-
-   ```powershell
-   mvn -q install -DskipTests
-   mvn -pl smart-office-services/smart-office-auth-service spring-boot:run
-   ```
-
-4. 前端切到网关代理：
-
-   ```powershell
-   # 网关默认 http://localhost:8000
-   cd smart-office-web
-   npm run dev -- --mode microservice
-   ```
-
-## 迁移顺序建议
-
-1. 抽公共能力：统一返回、异常、分页、安全上下文、Feign 拦截器。
-2. 迁移 system-service：用户、角色、菜单是认证和组织的基础依赖。
-3. 迁移 auth-service：登录认证、JWT、Redis Token。
-4. 迁移 org-service：公司、部门、岗位、员工。
-5. 迁移 approval-service：审批单、审批记录、审批状态机。
-6. 迁移 attendance-service：考勤规则、打卡、统计。
-7. 迁移 message-service：消息、待办、异步通知入口。
-8. 迁移 file/search/ai 等增强服务。
-
-每迁移一个服务，都需要补齐单服务单元测试、Feign 契约测试、网关路由冒烟测试。
-
-## 快速验证命令
-
-编译整个后端工程：
-
-```powershell
-mvn -q -DskipTests compile
-```
-
-打包整个后端工程：
-
-```powershell
-mvn -q -DskipTests package
-```
-
-运行现有单体测试：
-
-```powershell
-mvn -q -pl smart-office-server test
-```
-
-单独启动一个服务骨架并检查健康接口：
-
-```powershell
-mvn -q install -DskipTests
-$env:NACOS_DISCOVERY_ENABLED='false'
-$env:NACOS_REGISTER_ENABLED='false'
-$env:SERVICE_REGISTRY_AUTO_REGISTRATION_ENABLED='false'
-mvn -pl smart-office-services/smart-office-system-service spring-boot:run
-Invoke-WebRequest -UseBasicParsing http://127.0.0.1:9102/internal/health
-```
-
-说明：完整联调需要先启动 `docker compose up -d nacos`。如果只是单服务本地健康检查，可以按上面的命令临时关闭注册发现。
-## 当前迁移状态
-
-已迁移到微服务版本的能力：
-
-* common：统一返回、分页、业务异常、全局异常、BaseEntity、MyBatis-Plus 配置。
-* api：system-service 用户认证 Feign 契约。
-* system-service：用户认证所需的用户、角色、用户角色实体、Mapper、内部查询与最后登录时间更新。
-* auth-service：登录、JWT、Spring Security、当前用户、退出接口，通过 Feign 调用 system-service。
-* service runtime：所有启用 OpenFeign 的业务服务已补充 Spring Cloud LoadBalancer。
-
-本地验证结果：
-
-* `mvn -DskipTests compile` 通过。
-* `mvn test` 通过。
-* auth-service 使用 JDK 21 临时启动，`/actuator/health` 返回 `UP`。
-* system-service 可启动，当前因 Docker/MySQL 在本终端不可达，`/actuator/health` 返回 `DOWN`，待数据库联调。
-* org-service 已迁移公司、部门、岗位、员工基础接口，保留 `/api/org/**` 路径，通过 Feign 调 system-service 获取用户信息。
-* org-service 使用 JDK 21 临时启动，Spring 容器可启动；当前因 Docker/MySQL 在本终端不可达，`/actuator/health` 返回 `DOWN`。
-
-当前本地环境待处理：
-
-* 当前终端无法连接 Docker Desktop pipe，`docker version` 报 `dockerDesktopLinuxEngine` pipe 不存在。
-* 当前终端无权限启动 `com.docker.service`。
-* `5672` 被本机 `erl.exe` 占用，后续 RabbitMQ 容器启动前需要释放。
-* PATH 中默认 `java` 为 JDK 11，运行 Spring Boot 3 服务需使用 JDK 17/21。
-
-## Nacos 配置与独立数据库
-
-微服务配置参照 `D:\my_project\tjxt\tjxt-javaai02` 的结构拆分：
-
-* `application.yml`：只保留端口、服务名、服务私有库名。
-* `application-local.yml`：只保留 Nacos 地址、账号和 `spring.config.import`。
-* `docker/nacos/config/*.yaml`：保存共享配置与服务私有配置，由 Docker Compose 的 `nacos-config-importer` 自动发布。
-
-共享配置：
-
-* `shared-spring.yaml`：注册发现自动注册、Actuator 暴露。
-* `shared-mybatis.yaml`：MySQL 数据源、MyBatis-Plus 公共配置，数据库名来自 `${smart-office.jdbc.database}`。
-* `shared-feign.yaml`：OpenFeign 超时配置。
-* `shared-redis.yaml`：Redis 连接配置。
-* `shared-mq.yaml`：RabbitMQ 连接配置。
-* `shared-logs.yaml`：日志级别。
-
-微服务数据库：
-
-| 服务 | 数据库 |
-| --- | --- |
-| system-service | `smart_office_system` |
-| org-service | `smart_office_org` |
-| approval-service | `smart_office_approval` |
-| attendance-service | `smart_office_attendance` |
-| message-service | `smart_office_message` |
-| file-service | `smart_office_file` |
-| search-service | `smart_office_search` |
-| ai-service | `smart_office_ai` |
-
-Docker 当前验证：
-
-* `docker compose -f docker/docker-compose.yml config` 通过。
-* MySQL、Redis、Nacos、RabbitMQ、Elasticsearch、MinIO、XXL-JOB Admin 已启动。
-* 已手动验证 Nacos 配置发布成功，可读取 `shared-mybatis.yaml`。
-* 已验证 system-service 从 Nacos 读取共享 MyBatis 配置，连接 `smart_office_system`，`/actuator/health` 返回 `UP`。
-
-当前 Windows 端口说明：
-
-* `8751-8950` 被 Windows 排除，Nacos 默认 `8848` 无法绑定，因此本机使用 `8951`。
-* Nacos 2.x 客户端需要 gRPC 端口等于 HTTP 端口 + 1000，因此本机使用 `9951 -> 9848`。
-* 宿主 Redis/RabbitMQ 服务未被当前 shell 停止，Docker 版临时映射为 Redis `6380`、RabbitMQ `5673`。
-* Elasticsearch transport `9300` 在 Windows 排除段内，本机映射为 `9459 -> 9300`。
-
-本机启动业务服务时可使用：
+本地启动服务前建议设置：
 
 ```powershell
 $env:NACOS_SERVER_ADDR='127.0.0.1:8951'
@@ -210,28 +61,94 @@ $env:REDIS_PORT='6380'
 $env:RABBITMQ_PORT='5673'
 ```
 
-下一步：
+如命令行默认 `java` 不是 JDK 17，使用本机 JDK 17 启动 Spring Boot 3 服务：
 
-1. 联调 approval/message 的审批待办和通知链路。
-2. 补 file-service 真实 MinIO 上传接口。
-3. 给 search-service 接 Elasticsearch 索引同步与全文检索。
-4. ai-service 暂按占位处理，后续单独迁移。
+```powershell
+C:\Users\14224\.jdks\ms-17.0.18\bin\java.exe
+```
 
-## Gateway 鉴权与业务服务迁移
+## 4. 网关与身份
 
-已补齐：
+gateway 负责统一入口和身份透传：
 
-* gateway：JWT 校验、身份 Header 透传、外部伪造身份 Header 清理。
-* attendance-service：考勤规则、打卡、今日考勤、个人/部门记录、月度统计。
-* file-service：文件记录创建、详情、预览 URL、删除。
-* search-service：制度文档分页、创建、更新、详情、删除。
-* org-service 内部契约：按部门查询用户 ID 列表，供考勤部门记录查询使用。
+* 放行 `/api/auth/login`、Actuator 健康接口。
+* 其它 `/api/**` 请求必须携带 `Authorization: Bearer <token>`。
+* gateway 校验 JWT 后写入 `X-User-Id`、`X-Username`、`X-Real-Name`。
+* gateway 会清理外部伪造的身份 Header。
+* 下游业务服务只信任 gateway 透传的 `X-User-Id`，不接受前端直接传用户 ID。
 
-运行验证：
+## 5. 数据库拆分
 
-* Docker 中间件保持运行：MySQL、Redis、Nacos、RabbitMQ、Elasticsearch、MinIO、XXL-JOB Admin。
-* 使用 `C:\Users\14224\.jdks\ms-17.0.18\bin\java.exe` 临时启动 system/org/auth/attendance/file/search/gateway。
-* 已验证 gateway 未带 token 访问业务接口返回 `401`。
-* 已验证 gateway 登录 `admin/123456` 成功。
-* 已验证带 token 访问 `/api/auth/me`、`/api/attendance/today`、`/api/files/records`、`/api/policies` 成功。
-* 已通过 `mvn -DskipTests compile`、`mvn -DskipTests package`、`mvn test`。
+`docker/mysql/init/04-smart-office-microservices.sql` 会在新数据库卷初始化时创建微服务分库，并从单体库复制基础表结构和种子数据：
+
+* `smart_office_system`
+* `smart_office_org`
+* `smart_office_approval`
+* `smart_office_attendance`
+* `smart_office_message`
+* `smart_office_file`
+* `smart_office_search`
+* `smart_office_ai`
+
+跨服务读取禁止直接跨库查询，统一通过 `smart-office-api` 中的 Feign Client 调用内部接口。
+
+## 6. 当前迁移进度
+
+已完成：
+
+* gateway JWT 鉴权和身份 Header 透传。
+* auth/system/org 基础登录与用户组织链路。
+* attendance/file/search 基础业务迁移。
+* approval/message 代码层主链路：
+  * 提交审批创建审批节点、待办和通知。
+  * 审批通过、驳回、撤回、关闭完成待办并更新审批节点。
+  * message-service 命令失败时 approval-service 抛出业务异常。
+* 前端审批中心支持保存草稿、保存并提交、提交草稿、通过、驳回。
+* 前端新增消息中心，支持待办列表、通知列表、标记完成、标记已读。
+
+已验证：
+
+* `mvn -pl smart-office-services/smart-office-approval-service -am test`
+* `mvn test`
+* `npm run build`（smart-office-web）
+* `git diff --check`
+* gateway 基础冒烟已覆盖登录、鉴权、当前用户、考勤、文件、制度文档。
+
+待验证：
+
+* gateway 运行时审批/消息闭环：
+  * `employee/123456` 创建并提交审批。
+  * `manager/123456` 查看审批待办并审批。
+  * manager 待办完成，employee 收到结果通知。
+* `smart-office-web` 使用 `npm run dev -- --mode microservice` 连接 gateway 后的 Playwright 冒烟。
+
+## 7. 推荐启动顺序
+
+```powershell
+docker compose -f docker/docker-compose.yml up -d
+
+mvn -pl smart-office-services/smart-office-system-service spring-boot:run
+mvn -pl smart-office-services/smart-office-org-service spring-boot:run
+mvn -pl smart-office-services/smart-office-auth-service spring-boot:run
+mvn -pl smart-office-services/smart-office-approval-service spring-boot:run
+mvn -pl smart-office-services/smart-office-message-service spring-boot:run
+mvn -pl smart-office-services/smart-office-gateway spring-boot:run
+```
+
+前端连接 gateway：
+
+```powershell
+cd smart-office-web
+npm run dev -- --mode microservice
+```
+
+## 8. 后续顺序
+
+1. 完成 approval/message gateway 运行时联调。
+2. 将 Playwright 冒烟切到 microservice 模式。
+3. file-service 接入 MinIO 真实上传、下载、预览。
+4. message-service 接入 RabbitMQ 异步通知。
+5. attendance-service 接入 XXL-JOB 每日结算和月度统计。
+6. search-service 接入 Elasticsearch 索引同步和全文检索。
+7. auth-service 补 Redis Token 存储和退出失效。
+8. ai-service 独立迁移。

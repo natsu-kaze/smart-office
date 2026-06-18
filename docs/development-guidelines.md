@@ -1,10 +1,10 @@
 # Smart Office 开发规范
 
-本文档用于约束当前 `smart-office` 项目的后续开发。规范参考了 `tjxt-javaai02` 后端项目和 `tj-portal-src` 前端项目的分层习惯，但以本项目当前的 Spring Boot 3 单体模块化架构为准。
+本文档用于约束当前 `smart-office` 项目的后续开发。规范参考了 `tjxt-javaai02` 后端项目和 `tj-portal-src` 前端项目的分层习惯，但以本项目当前的 Spring Boot 3 + Spring Cloud Alibaba 双轨架构为准。
 
 ## 1. 架构边界
 
-第一阶段只做单体模块化，不拆微服务。
+当前采用双轨策略：`smart-office-server` 保留为单体业务基线，`smart-office-services` 作为微服务主线继续联调和完善。
 
 后端根模块为 `smart-office-server`，包根路径为：
 
@@ -27,7 +27,7 @@ ai          AI 助手，当前可降级，后续可独立拆分
 common      公共能力
 ```
 
-单体内部允许模块间通过 Service/Mapper 直接调用，但禁止出现跨模块循环依赖。AI 模块不参与主业务强依赖，AI 调用失败时必须可降级。
+单体内部允许模块间通过 Service/Mapper 直接调用，但禁止出现跨模块循环依赖。微服务内部禁止跨库直查，跨服务数据读取必须通过 `smart-office-api` 中的 Feign 契约。AI 模块不参与主业务强依赖，AI 调用失败时必须可降级。
 
 ## 2. 后端分层
 
@@ -141,7 +141,7 @@ REST 路径约定：
 要求：
 
 1. 入参对象必须使用 `@Valid`。
-2. 当前登录用户使用 `@AuthenticationPrincipal UserPrincipal` 获取。
+2. 单体内当前登录用户使用 `@AuthenticationPrincipal UserPrincipal` 获取；微服务业务接口通过 gateway 透传的 `X-User-Id` 获取当前用户。
 3. 需要分页的接口继承 `PageQuery`。
 4. 删除接口默认逻辑删除，关系表确实需要重建关系时才允许物理删除。
 5. 接口返回前端 VO，不返回 Entity。
@@ -275,10 +275,10 @@ logs/
 
 后续开发优先级：
 
-1. 保持单体模块可运行、可演示。
-2. 补全状态机和核心业务测试。
-3. 再做 Docker Compose。
-4. 再初始化前端并接入接口。
-5. Redis、RabbitMQ、MinIO、ES、XXL-JOB、Spring AI 等中间件按 TODO 分阶段接入。
+1. 保持单体模块可运行、可回退。
+2. 跑通微服务版审批/消息主链路。
+3. 前端代理切到 gateway，并补 Playwright 网关冒烟。
+4. 按阶段补 MinIO、RabbitMQ、XXL-JOB、Elasticsearch、Redis Token。
+5. 最后迁移 AI 独立能力。
 
-AI 模块当前允许降级实现，不阻塞审批、考勤、组织等主流程。
+AI 模块当前允许降级实现，不阻塞审批、考勤、组织、消息等主流程。

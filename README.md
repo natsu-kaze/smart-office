@@ -4,7 +4,7 @@
 
 本项目是一个面向企业内部协同办公场景的审批与考勤管理系统，参考钉钉、飞书、企业微信等办公平台中的审批、考勤、组织架构和待办通知能力，设计并实现员工管理、部门管理、角色权限、请假/加班/报销审批、考勤打卡、消息待办、文件附件、制度文档检索与 AI 办公助手等功能。
 
-项目采用后端优先的开发方式，当前已进入 Spring Cloud Alibaba 微服务演进阶段。`smart-office-server` 保留为已有业务基线，新建 `smart-office-services` 下的网关与业务服务骨架，后续按模块逐步迁移业务代码。
+项目采用后端优先的开发方式，当前已进入 Spring Cloud Alibaba 微服务联调阶段。`smart-office-server` 保留为单体业务基线，`smart-office-services` 作为后续主线，已完成 gateway、auth、system、org、approval、message、attendance、file、search 等核心服务迁移，AI 服务暂作独立增强能力保留占位。
 
 ## 项目定位
 
@@ -59,8 +59,10 @@
 
 ## 架构说明
 
-* 微服务工程结构、端口、网关路由和迁移顺序见 [docs/microservices-architecture.md](docs/microservices-architecture.md)。
-* 当前 `smart-office-server` 仍保留为业务基线，`smart-office-services` 用于承载后续拆分后的独立服务。
+* 当前目标、实施步骤和验收口径见 [docs/project-roadmap.md](docs/project-roadmap.md)。
+* 微服务工程结构、端口、网关路由和本地联调说明见 [docs/microservices-architecture.md](docs/microservices-architecture.md)。
+* 开发约束和代码风格见 [docs/development-guidelines.md](docs/development-guidelines.md)。
+* 当前 `smart-office-server` 仍保留为业务基线，`smart-office-services` 用于承载微服务主线。
 
 ## 核心功能
 
@@ -243,21 +245,26 @@ smart-office
 └── docker
 ```
 
-后续可演进为微服务架构：
+当前微服务架构：
 
 ```text
-smart-office-cloud
-├── gateway-service
-├── auth-service
-├── user-service
-├── org-service
-├── approval-service
-├── attendance-service
-├── message-service
-├── file-service
-├── search-service
-├── ai-service
-└── common
+smart-office
+├── smart-office-common
+├── smart-office-api
+├── smart-office-server                 # 单体业务基线
+├── smart-office-services
+│   ├── smart-office-gateway
+│   ├── smart-office-auth-service
+│   ├── smart-office-system-service
+│   ├── smart-office-org-service
+│   ├── smart-office-approval-service
+│   ├── smart-office-attendance-service
+│   ├── smart-office-message-service
+│   ├── smart-office-file-service
+│   ├── smart-office-search-service
+│   └── smart-office-ai-service
+├── smart-office-web
+└── docker
 ```
 
 ## 推荐数据库表
@@ -363,12 +370,30 @@ smart-office-cloud
 
 ## 启动方式
 
-后续补充。
+启动 Docker 中间件：
 
-计划使用 Docker Compose 启动以下依赖：
+```powershell
+$env:REDIS_HOST_PORT='6380'
+$env:RABBITMQ_HOST_PORT='5673'
+$env:NACOS_HOST_PORT='8951'
+$env:NACOS_GRPC_HOST_PORT='9951'
+$env:ELASTICSEARCH_TRANSPORT_PORT='9459'
+docker compose -f docker/docker-compose.yml up -d
+```
+
+本机启动业务服务前设置：
+
+```powershell
+$env:NACOS_SERVER_ADDR='127.0.0.1:8951'
+$env:REDIS_PORT='6380'
+$env:RABBITMQ_PORT='5673'
+```
+
+当前中间件：
 
 * MySQL
 * Redis
+* Nacos
 * RabbitMQ
 * Elasticsearch
 * MinIO
@@ -384,34 +409,14 @@ smart-office-cloud
 * 使用 Elasticsearch 实现制度文档、员工和审批单搜索。
 * 使用 MinIO 管理审批附件和制度文档。
 * 基于 Spring AI 实现制度问答、审批摘要和智能填单能力。
-* 预留 Spring Cloud Alibaba 微服务拆分方案。
+* 已进入 Spring Cloud Alibaba 微服务联调阶段。
 
 ## 当前开发目标
 
-第一阶段目标是完成一个可运行、可演示、可写入简历的企业办公系统 MVP：
+当前目标是完成微服务版本的核心办公闭环，并让前端逐步切到 gateway：
 
-* 用户登录
-* 组织架构
-* 审批申请
-* 审批处理
-* 考勤打卡
-* 消息待办
-* 文件上传
-* AI 审批摘要
-
-第二阶段再补充：
-
-* RabbitMQ
-* Redis / Redisson
-* XXL-JOB
-* Elasticsearch
-* MinIO
-* Spring AI 完整能力
-
-第三阶段再考虑：
-
-* Spring Cloud Alibaba 微服务拆分
-* Nacos
-* Gateway
-* OpenFeign
-* Sentinel
+1. 通过 gateway 登录、鉴权和透传用户身份。
+2. 联调审批提交、待办生成、审批处理、通知生成。
+3. 将前端代理切到 gateway，补 Playwright 网关冒烟。
+4. 补 MinIO 文件上传、RabbitMQ 异步通知、XXL-JOB 考勤结算、Elasticsearch 制度文档检索。
+5. 最后迁移 AI 独立能力，AI 不阻塞审批、考勤、组织、消息主流程。

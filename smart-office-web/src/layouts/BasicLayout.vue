@@ -25,6 +25,10 @@
           <el-icon><Tickets /></el-icon>
           <span>审批中心</span>
         </el-menu-item>
+        <el-menu-item index="/messages">
+          <el-icon><Bell /></el-icon>
+          <span>消息中心</span>
+        </el-menu-item>
         <el-menu-item index="/attendance">
           <el-icon><Clock /></el-icon>
           <span>考勤打卡</span>
@@ -35,7 +39,7 @@
       <el-header class="topbar">
         <div>
           <h1>{{ route.meta.title || '工作台' }}</h1>
-          <p>单体模块化 MVP</p>
+          <p>微服务联调版</p>
         </div>
         <el-dropdown>
           <button class="user-button">
@@ -57,7 +61,7 @@
 </template>
 
 <script setup lang="ts">
-import { Clock, DataBoard, OfficeBuilding, Tickets, User } from '@element-plus/icons-vue'
+import { Bell, Clock, DataBoard, OfficeBuilding, Tickets, User } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 

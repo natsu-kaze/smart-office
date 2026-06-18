@@ -13,8 +13,10 @@ import com.natsukaze.smartoffice.approvalservice.dto.ApprovalActionRequest;
 import com.natsukaze.smartoffice.approvalservice.dto.ApprovalFormRequest;
 import com.natsukaze.smartoffice.approvalservice.dto.ApprovalPageQuery;
 import com.natsukaze.smartoffice.approvalservice.entity.ApprovalForm;
+import com.natsukaze.smartoffice.approvalservice.entity.ApprovalProcess;
 import com.natsukaze.smartoffice.approvalservice.entity.ApprovalRecord;
 import com.natsukaze.smartoffice.approvalservice.mapper.ApprovalFormMapper;
+import com.natsukaze.smartoffice.approvalservice.mapper.ApprovalProcessMapper;
 import com.natsukaze.smartoffice.approvalservice.mapper.ApprovalRecordMapper;
 import com.natsukaze.smartoffice.approvalservice.vo.ApprovalFormVO;
 import com.natsukaze.smartoffice.approvalservice.vo.ApprovalRecordVO;
@@ -44,6 +46,8 @@ public class ApprovalService {
     private final ApprovalFormMapper formMapper;
 
     private final ApprovalRecordMapper recordMapper;
+
+    private final ApprovalProcessMapper processMapper;
 
     private final SystemUserClient systemUserClient;
 
@@ -87,6 +91,7 @@ public class ApprovalService {
         form.setSubmittedAt(LocalDateTime.now());
         formMapper.updateById(form);
         addRecord(id, ApprovalAction.SUBMIT, userId, fromStatus, ApprovalStatus.PENDING, "submit approval");
+        createProcess(form.getId(), approverId);
         createTodo(approverId, form);
         return detail(id);
     }
@@ -100,6 +105,7 @@ public class ApprovalService {
         form.setCompletedAt(LocalDateTime.now());
         formMapper.updateById(form);
         completeTodo(userId, form.getId());
+        finishCurrentProcess(form.getId(), userId, ApprovalStatus.APPROVED, request.getComment());
         addRecord(id, ApprovalAction.APPROVE, userId, ApprovalStatus.PENDING, ApprovalStatus.APPROVED, request.getComment());
         notifyUser(form.getApplicantUserId(), "Approval passed", form.getTitle() + " has been approved", form.getId());
         return detail(id);
@@ -114,6 +120,7 @@ public class ApprovalService {
         form.setCompletedAt(LocalDateTime.now());
         formMapper.updateById(form);
         completeTodo(userId, form.getId());
+        finishCurrentProcess(form.getId(), userId, ApprovalStatus.REJECTED, request.getComment());
         addRecord(id, ApprovalAction.REJECT, userId, ApprovalStatus.PENDING, ApprovalStatus.REJECTED, request.getComment());
         notifyUser(form.getApplicantUserId(), "Approval rejected", form.getTitle() + " has been rejected", form.getId());
         return detail(id);
@@ -132,6 +139,7 @@ public class ApprovalService {
         formMapper.updateById(form);
         if (approverId != null) {
             completeTodo(approverId, form.getId());
+            finishCurrentProcess(form.getId(), approverId, ApprovalStatus.WITHDRAWN, request.getComment());
         }
         addRecord(id, ApprovalAction.WITHDRAW, userId, ApprovalStatus.PENDING, ApprovalStatus.WITHDRAWN, request.getComment());
         return detail(id);
@@ -145,10 +153,15 @@ public class ApprovalService {
             throw new BusinessException("approved form cannot be closed");
         }
         ApprovalStatus fromStatus = form.getStatus();
+        Long approverId = form.getCurrentApproverId();
         form.setStatus(ApprovalStatus.CLOSED);
         form.setCurrentApproverId(null);
         form.setCompletedAt(LocalDateTime.now());
         formMapper.updateById(form);
+        if (fromStatus == ApprovalStatus.PENDING && approverId != null) {
+            completeTodo(approverId, form.getId());
+            finishCurrentProcess(form.getId(), approverId, ApprovalStatus.CLOSED, request.getComment());
+        }
         addRecord(id, ApprovalAction.CLOSE, userId, fromStatus, ApprovalStatus.CLOSED, request.getComment());
         return detail(id);
     }
@@ -225,26 +238,56 @@ public class ApprovalService {
     }
 
     private void createTodo(Long userId, ApprovalForm form) {
-        messageCommandClient.createTodo(new TodoCreateCommand(
+        requireSuccess(messageCommandClient.createTodo(new TodoCreateCommand(
                 userId,
                 "Approval todo: " + form.getTitle(),
                 BusinessType.APPROVAL.getCode(),
                 form.getId(),
-                null));
+                null)), "create approval todo failed");
         notifyUser(userId, "New approval todo", form.getTitle(), form.getId());
     }
 
     private void completeTodo(Long userId, Long formId) {
-        messageCommandClient.completeTodo(userId, BusinessType.APPROVAL.getCode(), formId);
+        requireSuccess(messageCommandClient.completeTodo(userId, BusinessType.APPROVAL.getCode(), formId),
+                "complete approval todo failed");
     }
 
     private void notifyUser(Long userId, String title, String content, Long formId) {
-        messageCommandClient.createNotice(new NoticeCreateCommand(
+        requireSuccess(messageCommandClient.createNotice(new NoticeCreateCommand(
                 userId,
                 title,
                 content,
                 BusinessType.APPROVAL.getCode(),
-                formId));
+                formId)), "create approval notice failed");
+    }
+
+    private void createProcess(Long formId, Long approverId) {
+        ApprovalProcess process = new ApprovalProcess();
+        process.setFormId(formId);
+        process.setApproverUserId(approverId);
+        process.setStepOrder(1);
+        process.setStatus(ApprovalStatus.PENDING);
+        processMapper.insert(process);
+    }
+
+    private void finishCurrentProcess(Long formId, Long approverId, ApprovalStatus status, String comment) {
+        ApprovalProcess process = processMapper.selectOne(new LambdaQueryWrapper<ApprovalProcess>()
+                .eq(ApprovalProcess::getFormId, formId)
+                .eq(ApprovalProcess::getApproverUserId, approverId)
+                .eq(ApprovalProcess::getStatus, ApprovalStatus.PENDING)
+                .last("LIMIT 1"));
+        if (process != null) {
+            process.setStatus(status);
+            process.setApprovedAt(LocalDateTime.now());
+            process.setComment(comment);
+            processMapper.updateById(process);
+        }
+    }
+
+    private void requireSuccess(Result<?> result, String message) {
+        if (!success(result)) {
+            throw new BusinessException(message);
+        }
     }
 
     private void addRecord(Long formId, ApprovalAction action, Long operatorUserId, ApprovalStatus fromStatus,

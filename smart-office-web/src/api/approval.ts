@@ -10,5 +10,17 @@ export function getApprovalTodos(params: Record<string, unknown>) {
 }
 
 export function createApproval(data: Record<string, unknown>) {
-  return request.post('/api/approvals', data)
+  return request.post<ApprovalItem>('/api/approvals', data)
+}
+
+export function submitApproval(id: number) {
+  return request.post<ApprovalItem>(`/api/approvals/${id}/submit`)
+}
+
+export function approveApproval(id: number, comment?: string) {
+  return request.post<ApprovalItem>(`/api/approvals/${id}/approve`, { comment })
+}
+
+export function rejectApproval(id: number, comment?: string) {
+  return request.post<ApprovalItem>(`/api/approvals/${id}/reject`, { comment })
 }

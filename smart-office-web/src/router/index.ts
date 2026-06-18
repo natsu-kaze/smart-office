@@ -39,6 +39,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '审批中心' },
       },
       {
+        path: 'messages',
+        name: 'messages',
+        component: () => import('@/views/message/MessageCenterView.vue'),
+        meta: { title: '消息中心' },
+      },
+      {
         path: 'attendance',
         name: 'attendance',
         component: () => import('@/views/attendance/AttendanceView.vue'),

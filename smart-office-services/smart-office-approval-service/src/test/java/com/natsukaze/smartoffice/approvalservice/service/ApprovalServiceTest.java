@@ -1,0 +1,201 @@
+package com.natsukaze.smartoffice.approvalservice.service;
+
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.natsukaze.smartoffice.api.message.client.MessageCommandClient;
+import com.natsukaze.smartoffice.api.message.dto.NoticeCreateCommand;
+import com.natsukaze.smartoffice.api.message.dto.TodoCreateCommand;
+import com.natsukaze.smartoffice.api.org.client.OrgEmployeeClient;
+import com.natsukaze.smartoffice.api.org.dto.OrgEmployeeDTO;
+import com.natsukaze.smartoffice.api.system.client.SystemUserClient;
+import com.natsukaze.smartoffice.api.system.dto.CurrentUserDTO;
+import com.natsukaze.smartoffice.approvalservice.entity.ApprovalForm;
+import com.natsukaze.smartoffice.approvalservice.entity.ApprovalProcess;
+import com.natsukaze.smartoffice.approvalservice.entity.ApprovalRecord;
+import com.natsukaze.smartoffice.approvalservice.mapper.ApprovalFormMapper;
+import com.natsukaze.smartoffice.approvalservice.mapper.ApprovalProcessMapper;
+import com.natsukaze.smartoffice.approvalservice.mapper.ApprovalRecordMapper;
+import com.natsukaze.smartoffice.common.core.Result;
+import com.natsukaze.smartoffice.common.enums.ApprovalStatus;
+import com.natsukaze.smartoffice.common.enums.ApprovalType;
+import com.natsukaze.smartoffice.common.enums.BusinessType;
+import com.natsukaze.smartoffice.common.exception.BusinessException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class ApprovalServiceTest {
+
+    private static final long FORM_ID = 100L;
+    private static final long APPLICANT_ID = 3L;
+    private static final long APPROVER_ID = 2L;
+
+    @Mock
+    private ApprovalFormMapper formMapper;
+
+    @Mock
+    private ApprovalRecordMapper recordMapper;
+
+    @Mock
+    private ApprovalProcessMapper processMapper;
+
+    @Mock
+    private SystemUserClient systemUserClient;
+
+    @Mock
+    private OrgEmployeeClient orgEmployeeClient;
+
+    @Mock
+    private MessageCommandClient messageCommandClient;
+
+    private ApprovalService approvalService;
+
+    @BeforeEach
+    void setUp() {
+        approvalService = new ApprovalService(
+                formMapper,
+                recordMapper,
+                processMapper,
+                systemUserClient,
+                orgEmployeeClient,
+                messageCommandClient);
+    }
+
+    @Test
+    void submitCreatesApprovalProcessTodoAndNotice() {
+        ApprovalForm form = draftForm();
+        when(formMapper.selectById(FORM_ID)).thenReturn(form);
+        stubApplicantEmployee();
+        stubDetailLookups(true);
+        when(messageCommandClient.createTodo(any(TodoCreateCommand.class))).thenReturn(Result.success());
+        when(messageCommandClient.createNotice(any(NoticeCreateCommand.class))).thenReturn(Result.success());
+
+        approvalService.submit(APPLICANT_ID, FORM_ID);
+
+        assertThat(form.getStatus()).isEqualTo(ApprovalStatus.PENDING);
+        assertThat(form.getCurrentApproverId()).isEqualTo(APPROVER_ID);
+        assertThat(form.getSubmittedAt()).isNotNull();
+
+        ArgumentCaptor<ApprovalProcess> processCaptor = ArgumentCaptor.forClass(ApprovalProcess.class);
+        verify(processMapper).insert(processCaptor.capture());
+        assertThat(processCaptor.getValue().getFormId()).isEqualTo(FORM_ID);
+        assertThat(processCaptor.getValue().getApproverUserId()).isEqualTo(APPROVER_ID);
+        assertThat(processCaptor.getValue().getStatus()).isEqualTo(ApprovalStatus.PENDING);
+
+        ArgumentCaptor<TodoCreateCommand> todoCaptor = ArgumentCaptor.forClass(TodoCreateCommand.class);
+        verify(messageCommandClient).createTodo(todoCaptor.capture());
+        assertThat(todoCaptor.getValue().userId()).isEqualTo(APPROVER_ID);
+        assertThat(todoCaptor.getValue().businessType()).isEqualTo(BusinessType.APPROVAL.getCode());
+        assertThat(todoCaptor.getValue().businessId()).isEqualTo(FORM_ID);
+
+        ArgumentCaptor<NoticeCreateCommand> noticeCaptor = ArgumentCaptor.forClass(NoticeCreateCommand.class);
+        verify(messageCommandClient).createNotice(noticeCaptor.capture());
+        assertThat(noticeCaptor.getValue().userId()).isEqualTo(APPROVER_ID);
+        assertThat(noticeCaptor.getValue().businessId()).isEqualTo(FORM_ID);
+    }
+
+    @Test
+    void approveCompletesTodoUpdatesProcessAndNotifiesApplicant() {
+        ApprovalForm form = pendingForm();
+        ApprovalProcess process = pendingProcess();
+        when(formMapper.selectById(FORM_ID)).thenReturn(form);
+        stubApplicantEmployee();
+        stubDetailLookups(false);
+        when(processMapper.selectOne(any(Wrapper.class))).thenReturn(process);
+        when(messageCommandClient.completeTodo(APPROVER_ID, BusinessType.APPROVAL.getCode(), FORM_ID))
+                .thenReturn(Result.success());
+        when(messageCommandClient.createNotice(any(NoticeCreateCommand.class))).thenReturn(Result.success());
+
+        approvalService.approve(APPROVER_ID, FORM_ID, nullComment());
+
+        assertThat(form.getStatus()).isEqualTo(ApprovalStatus.APPROVED);
+        assertThat(form.getCurrentApproverId()).isNull();
+        assertThat(form.getCompletedAt()).isNotNull();
+
+        verify(messageCommandClient).completeTodo(APPROVER_ID, BusinessType.APPROVAL.getCode(), FORM_ID);
+
+        ArgumentCaptor<ApprovalProcess> processCaptor = ArgumentCaptor.forClass(ApprovalProcess.class);
+        verify(processMapper).updateById(processCaptor.capture());
+        assertThat(processCaptor.getValue().getStatus()).isEqualTo(ApprovalStatus.APPROVED);
+        assertThat(processCaptor.getValue().getApprovedAt()).isNotNull();
+
+        ArgumentCaptor<NoticeCreateCommand> noticeCaptor = ArgumentCaptor.forClass(NoticeCreateCommand.class);
+        verify(messageCommandClient).createNotice(noticeCaptor.capture());
+        assertThat(noticeCaptor.getValue().userId()).isEqualTo(APPLICANT_ID);
+        assertThat(noticeCaptor.getValue().businessType()).isEqualTo(BusinessType.APPROVAL.getCode());
+    }
+
+    @Test
+    void submitFailsWhenMessageServiceRejectsTodoCommand() {
+        ApprovalForm form = draftForm();
+        when(formMapper.selectById(FORM_ID)).thenReturn(form);
+        stubApplicantEmployee();
+        when(messageCommandClient.createTodo(any(TodoCreateCommand.class)))
+                .thenReturn(Result.fail(500, "message unavailable"));
+
+        assertThatThrownBy(() -> approvalService.submit(APPLICANT_ID, FORM_ID))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("create approval todo failed");
+
+        verify(messageCommandClient, never()).createNotice(any(NoticeCreateCommand.class));
+    }
+
+    private ApprovalForm draftForm() {
+        ApprovalForm form = new ApprovalForm();
+        form.setId(FORM_ID);
+        form.setApprovalType(ApprovalType.LEAVE);
+        form.setTitle("Annual leave");
+        form.setApplicantUserId(APPLICANT_ID);
+        form.setApplicantDeptId(2L);
+        form.setStatus(ApprovalStatus.DRAFT);
+        return form;
+    }
+
+    private ApprovalForm pendingForm() {
+        ApprovalForm form = draftForm();
+        form.setStatus(ApprovalStatus.PENDING);
+        form.setCurrentApproverId(APPROVER_ID);
+        return form;
+    }
+
+    private ApprovalProcess pendingProcess() {
+        ApprovalProcess process = new ApprovalProcess();
+        process.setId(200L);
+        process.setFormId(FORM_ID);
+        process.setApproverUserId(APPROVER_ID);
+        process.setStatus(ApprovalStatus.PENDING);
+        return process;
+    }
+
+    private void stubApplicantEmployee() {
+        when(orgEmployeeClient.getByUserId(APPLICANT_ID))
+                .thenReturn(Result.success(new OrgEmployeeDTO(3L, APPLICANT_ID, 2L, "Research and Development", APPROVER_ID)));
+    }
+
+    private void stubDetailLookups(boolean includeApprover) {
+        when(recordMapper.selectList(any(Wrapper.class))).thenReturn(List.of());
+        when(systemUserClient.getById(APPLICANT_ID))
+                .thenReturn(Result.success(new CurrentUserDTO(APPLICANT_ID, "employee", "Employee", 3L, 2L)));
+        if (includeApprover) {
+            when(systemUserClient.getById(APPROVER_ID))
+                    .thenReturn(Result.success(new CurrentUserDTO(APPROVER_ID, "manager", "Department Manager", 2L, 2L)));
+        }
+    }
+
+    private com.natsukaze.smartoffice.approvalservice.dto.ApprovalActionRequest nullComment() {
+        return new com.natsukaze.smartoffice.approvalservice.dto.ApprovalActionRequest();
+    }
+}

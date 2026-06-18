@@ -33,6 +33,7 @@ test('smart office main flow smoke test', async ({ page }) => {
     ['/system/users', () => page.getByRole('heading', { name: '用户管理' })],
     ['/org', () => page.getByRole('heading', { name: '组织架构' })],
     ['/approvals', () => page.getByRole('button', { name: '新建审批' })],
+    ['/messages', () => page.getByRole('heading', { name: '待办中心' })],
     ['/attendance', () => page.getByText('今日考勤')],
   ] as const
 
@@ -46,6 +47,10 @@ test('smart office main flow smoke test', async ({ page }) => {
   await page.getByRole('button', { name: '新建审批' }).click()
   await expect(page.getByRole('dialog').getByText('新建审批')).toBeVisible()
   await expect(page.getByRole('button', { name: '保存草稿' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '保存并提交' })).toBeVisible()
+
+  await page.goto('/messages')
+  await expect(page.getByRole('heading', { name: '通知消息' })).toBeVisible()
 
   await page.goto('/attendance')
   await expect(page.getByRole('button', { name: '上班打卡' })).toBeVisible()
