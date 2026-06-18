@@ -61,7 +61,7 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 * message-service：待办、通知、RabbitMQ 异步通知、发送失败同步降级。
 * attendance-service：考勤规则、打卡、记录、月度统计、XXL-JOB 每日结算和月度统计任务。
 * file-service：MinIO 上传、下载、预览 URL、文件记录。
-* search-service：制度文档 MySQL 版 CRUD 和模糊检索。
+* search-service：制度文档 CRUD、MySQL 模糊检索、Elasticsearch 索引同步和全文检索。
 * smart-office-web：登录、工作台、用户、组织、审批、消息、文件、今日考勤基础页面。
 
 已固化脚本：
@@ -70,6 +70,7 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 * `scripts/smoke-p1-file-minio.ps1`：文件和 MinIO 链路。
 * `scripts/smoke-p1-message-rabbitmq.ps1`：审批通知 RabbitMQ 链路。
 * `scripts/smoke-p1-attendance-xxl-job.ps1`：考勤和 XXL-JOB 链路。
+* `scripts/smoke-p1-search-elasticsearch.ps1`：制度文档和 Elasticsearch 链路。
 * `smart-office-web` 的 `npm run test:e2e:microservice`：前端 microservice 模式 Playwright 冒烟。
 
 ## 4. 当前目标
@@ -78,32 +79,31 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 
 优先级：
 
-1. search-service 接入 Elasticsearch，完成制度文档索引同步和全文检索。
-2. auth-service 接入 Redis Token，完成登录态存储、网关校验和退出失效。
-3. approval-service 接入 Redisson 或乐观锁增强，处理重复审批和并发审批。
-4. message-service 扩展考勤异常通知、消费幂等和失败重试。
-5. 前端补制度文档检索、审批详情、考勤记录等页面，并扩展 Playwright 冒烟。
-6. ai-service 独立迁移，接 Spring AI 和制度问答。
+1. auth-service 接入 Redis Token，完成登录态存储、网关校验和退出失效。
+2. approval-service 接入 Redisson 或乐观锁增强，处理重复审批和并发审批。
+3. message-service 扩展考勤异常通知、消费幂等和失败重试。
+4. 前端补制度文档检索、审批详情、考勤记录等页面，并扩展 Playwright 冒烟。
+5. ai-service 独立迁移，接 Spring AI 和制度问答。
 
 ## 5. 实施步骤
 
 ### Step 1：Elasticsearch 制度文档检索
 
-要做：
+已实现：
 
-* 为 search-service 增加 Elasticsearch 依赖和配置。
-* 建立制度文档索引模型。
+* search-service 已增加 Elasticsearch 依赖和配置。
+* 已建立制度文档索引模型 `smart-office-policy-document`。
 * 制度文档新增、修改、删除时同步索引。
-* 增加重建索引接口或任务，支持从 MySQL 重新刷 ES。
-* 分页搜索优先走 ES；ES 不可用时给出明确错误或降级到 MySQL LIKE。
-* 新增 smoke 脚本，覆盖登录、创建制度文档、检索命中、清理数据。
+* 已增加内部重建索引接口，支持从 MySQL 重新刷 ES。
+* 带 `keyword` 的分页搜索优先走 ES；ES 不可用时降级到 MySQL LIKE。
+* 已新增 smoke 脚本，覆盖登录、创建制度文档、重建索引、检索命中、清理数据。
 
 验收：
 
-* `mvn -pl smart-office-services/smart-office-search-service -am test`
-* `mvn test`
-* `git diff --check`
-* `scripts/smoke-p1-search-elasticsearch.ps1`
+* `[x] mvn -pl smart-office-services/smart-office-search-service -am test`
+* `[x] mvn test`
+* `[x] git diff --check`
+* `[x] scripts/smoke-p1-search-elasticsearch.ps1`
 
 ### Step 2：Redis Token 与退出失效
 

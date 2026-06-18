@@ -115,6 +115,7 @@ gateway 负责统一入口和身份透传：
 * smart-office-web 已补 microservice 模式 Playwright 冒烟。
 * attendance-service 已接入 XXL-JOB 执行器，支持每日缺卡结算和月度统计任务。
 * org-service 已补内部活跃员工 userId 列表接口，供 attendance-service 通过 Feign 获取结算对象。
+* search-service 已接入 Elasticsearch，制度文档新增、修改、删除会同步索引，带关键字检索优先走 ES，失败时降级 MySQL LIKE。
 
 已验证：
 
@@ -146,6 +147,11 @@ gateway 负责统一入口和身份透传：
   * XXL-JOB Admin 可访问。
   * 内部任务接口触发每日缺卡结算和月度统计。
   * employee 通过 gateway 查询到缺卡记录和月度 `missingCount`。
+* `scripts/smoke-p1-search-elasticsearch.ps1` 覆盖 search/Elasticsearch 网关链路：
+  * Elasticsearch 集群健康为 `green` 或 `yellow`。
+  * employee 通过 gateway 创建已发布制度文档。
+  * search-service 内部接口重建制度文档索引。
+  * employee 通过 gateway 使用唯一关键字检索到制度文档。
 
 ## 7. 推荐启动顺序
 
@@ -183,9 +189,8 @@ npm run test:e2e:microservice
 
 ## 8. 后续顺序
 
-1. search-service 接入 Elasticsearch 索引同步和全文检索。
-2. auth-service 补 Redis Token 存储、gateway 二次校验和退出失效。
-3. approval-service 补重复审批、并发审批控制和报销二级审批。
-4. message-service 扩展考勤异常通知、消费幂等和失败重试。
-5. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
-6. ai-service 独立迁移，保持 AI 不阻塞主业务流程。
+1. auth-service 补 Redis Token 存储、gateway 二次校验和退出失效。
+2. approval-service 补重复审批、并发审批控制和报销二级审批。
+3. message-service 扩展考勤异常通知、消费幂等和失败重试。
+4. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
+5. ai-service 独立迁移，保持 AI 不阻塞主业务流程。

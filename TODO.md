@@ -32,6 +32,8 @@
 * [x] attendance-service 接入 XXL-JOB 执行器，新增每日缺卡结算和月度统计任务。
 * [x] org-service 新增内部活跃员工 userId 列表接口，供考勤结算按员工维度处理。
 * [x] 新增 `scripts/smoke-p1-attendance-xxl-job.ps1`，固化考勤/XXL-JOB 网关冒烟链路。
+* [x] search-service 接入 Elasticsearch，支持制度文档索引同步、重建和全文检索降级。
+* [x] 新增 `scripts/smoke-p1-search-elasticsearch.ps1`，固化制度文档 ES 网关冒烟链路。
 
 已验证：
 * [x] `mvn -pl smart-office-services/smart-office-approval-service -am test`
@@ -44,14 +46,15 @@
 * [x] `npm run test:e2e:microservice`（`E2E_BASE_URL=http://127.0.0.1:5175`）
 * [x] `mvn -pl smart-office-services/smart-office-attendance-service -am test`
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-attendance-xxl-job.ps1`
+* [x] `mvn -pl smart-office-services/smart-office-search-service -am test`
+* [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-search-elasticsearch.ps1`
 
 当前下一步：
-1. search-service 接入 Elasticsearch，补制度文档索引同步与全文检索。
-2. auth-service 接入 Redis Token 存储、gateway 二次校验与退出失效。
-3. approval-service 补重复审批/并发审批控制和报销二级审批。
-4. message-service 补考勤异常通知、消费幂等和失败重试。
-5. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
-6. 最后迁移 ai-service，AI 不阻塞办公主流程。
+1. auth-service 接入 Redis Token 存储、gateway 二次校验与退出失效。
+2. approval-service 补重复审批/并发审批控制和报销二级审批。
+3. message-service 补考勤异常通知、消费幂等和失败重试。
+4. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
+5. 最后迁移 ai-service，AI 不阻塞办公主流程。
 
 ## 当前目标与步骤
 
@@ -63,7 +66,7 @@
 * [x] 补 message-service RabbitMQ 异步通知。
 * [x] 将前端代理稳定切到 gateway，并补 Playwright microservice 冒烟。
 * [x] 补 attendance-service XXL-JOB 考勤结算与月度统计。
-* [ ] 补 search-service Elasticsearch 索引同步与全文检索。
+* [x] 补 search-service Elasticsearch 索引同步与全文检索。
 * [ ] 补 auth-service Redis Token 存储、gateway 二次校验与退出失效。
 * [ ] 补 approval-service 重复审批/并发审批控制和报销二级审批。
 * [ ] 补 message-service 考勤异常通知、消费幂等和失败重试。
@@ -72,19 +75,18 @@
 
 推荐执行顺序：
 
-1. Elasticsearch 制度文档检索。
-2. Redis Token 与退出失效。
-3. 审批并发与规则补强。
-4. 消息可靠性与考勤异常通知。
-5. 前端体验补齐。
-6. ai-service 独立迁移。
+1. Redis Token 与退出失效。
+2. 审批并发与规则补强。
+3. 消息可靠性与考勤异常通知。
+4. 前端体验补齐。
+5. ai-service 独立迁移。
 
 当前 Elasticsearch 任务验收命令：
 
-* [ ] `mvn -pl smart-office-services/smart-office-search-service -am test`
-* [ ] `mvn test`
-* [ ] `git diff --check`
-* [ ] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-search-elasticsearch.ps1`
+* [x] `mvn -pl smart-office-services/smart-office-search-service -am test`
+* [x] `mvn test`
+* [x] `git diff --check`
+* [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-search-elasticsearch.ps1`
 
 下面保留详细模块清单和历史进度，后续每完成一项同步勾选。
 
@@ -383,11 +385,11 @@
 
 当前优先：
 
-* [ ] search-service 接入 Elasticsearch
-* [ ] 创建制度文档索引
-* [ ] 同步制度文档数据到 ES
-* [ ] 制度文档搜索接口
-* [ ] 新增制度文档 ES 冒烟脚本
+* [x] search-service 接入 Elasticsearch
+* [x] 创建制度文档索引
+* [x] 同步制度文档数据到 ES
+* [x] 制度文档搜索接口
+* [x] 新增制度文档 ES 冒烟脚本
 
 后续扩展：
 
@@ -398,7 +400,7 @@
 * [ ] 员工搜索接口
 * [ ] 审批单搜索接口
 
-当前已有 MySQL LIKE 搜索，下一步替换为 ES 优先、MySQL 降级。
+当前已有 MySQL LIKE 搜索，带关键字搜索优先走 ES，ES 不可用时降级 MySQL。
 
 ## 10. XXL-JOB 定时任务
 

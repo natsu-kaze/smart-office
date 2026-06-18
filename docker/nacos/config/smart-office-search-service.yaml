@@ -1,3 +1,10 @@
 smart-office:
   service:
     module: search
+  search:
+    elasticsearch:
+      enabled: ${SEARCH_ES_ENABLED:true}
+
+spring:
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://127.0.0.1:9200}

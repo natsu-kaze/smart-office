@@ -8,6 +8,7 @@ import com.natsukaze.smartoffice.common.exception.BusinessException;
 import com.natsukaze.smartoffice.searchservice.dto.PolicyDocumentPageQuery;
 import com.natsukaze.smartoffice.searchservice.dto.PolicyDocumentSaveRequest;
 import com.natsukaze.smartoffice.searchservice.entity.PolicyDocument;
+import com.natsukaze.smartoffice.searchservice.es.PolicyDocumentIndexService;
 import com.natsukaze.smartoffice.searchservice.mapper.PolicyDocumentMapper;
 import com.natsukaze.smartoffice.searchservice.vo.PolicyDocumentVO;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +24,22 @@ public class PolicyDocumentService {
 
     private final PolicyDocumentMapper documentMapper;
 
+    private final PolicyDocumentIndexService indexService;
+
     public PageResult<PolicyDocumentVO> page(PolicyDocumentPageQuery query) {
+        if (StringUtils.hasText(query.getStatus())) {
+            DocumentStatus.ofNullable(query.getStatus());
+        }
+        if (StringUtils.hasText(query.getKeyword())) {
+            PageResult<PolicyDocumentVO> esResult = indexService.search(query).orElse(null);
+            if (esResult != null) {
+                return esResult;
+            }
+        }
+        return mysqlPage(query);
+    }
+
+    private PageResult<PolicyDocumentVO> mysqlPage(PolicyDocumentPageQuery query) {
         LambdaQueryWrapper<PolicyDocument> wrapper = new LambdaQueryWrapper<PolicyDocument>()
                 .eq(StringUtils.hasText(query.getStatus()), PolicyDocument::getStatus,
                         DocumentStatus.ofNullable(query.getStatus()))
@@ -47,6 +63,7 @@ public class PolicyDocumentService {
             document.setPublishedAt(LocalDateTime.now());
         }
         documentMapper.insert(document);
+        indexService.sync(document);
         return toVO(document);
     }
 
@@ -58,7 +75,9 @@ public class PolicyDocumentService {
             document.setPublishedAt(LocalDateTime.now());
         }
         documentMapper.updateById(document);
-        return toVO(requireDocument(id));
+        PolicyDocument updated = requireDocument(id);
+        indexService.sync(updated);
+        return toVO(updated);
     }
 
     public PolicyDocumentVO detail(Long id) {
@@ -69,6 +88,12 @@ public class PolicyDocumentService {
     public void delete(Long id) {
         requireDocument(id);
         documentMapper.deleteById(id);
+        indexService.delete(id);
+    }
+
+    public int reindex() {
+        return indexService.rebuild(documentMapper.selectList(new LambdaQueryWrapper<PolicyDocument>()
+                .orderByDesc(PolicyDocument::getUpdateTime)));
     }
 
     private void fill(PolicyDocument document, PolicyDocumentSaveRequest request) {

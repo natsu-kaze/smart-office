@@ -10,3 +10,6 @@ spring:
 smart-office:
   jdbc:
     database: smart_office_search
+  search:
+    elasticsearch:
+      enabled: ${SEARCH_ES_ENABLED:true}
