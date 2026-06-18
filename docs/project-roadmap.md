@@ -91,9 +91,9 @@ $env:RABBITMQ_PORT='5673'
 C:\Users\14224\.jdks\ms-17.0.18\bin\java.exe
 ```
 
-## 4. 2026-06-18 进展快照
+## 4. 2026-06-19 进展快照
 
-P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件上传、预览、下载链路、RabbitMQ 审批通知异步化和 Playwright microservice 前端冒烟也已通过，下一步进入 XXL-JOB 考勤结算。
+P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件上传、预览、下载链路、RabbitMQ 审批通知异步化、Playwright microservice 前端冒烟和 XXL-JOB 考勤结算也已通过，下一步进入 Elasticsearch 制度文档检索。
 
 本轮完成：
 
@@ -114,6 +114,10 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 * system-service 新增 `/api/system/users` 用户分页接口，支撑前端用户管理页从 gateway 访问。
 * common 新增 JavaScript 安全整数序列化策略，Snowflake Long ID 以字符串返回，分页等小数字仍保持 number。
 * smart-office-web 已切到 microservice 模式 Playwright 冒烟，覆盖登录、页面访问、审批、消息、文件上传。
+* attendance-service 接入 XXL-JOB 执行器，新增 `attendanceDailySettlementJob` 和 `attendanceMonthlySummaryJob`。
+* attendance-service 新增内部任务触发接口，支持本地冒烟验证每日缺卡结算和月度统计落库。
+* org-service 新增内部活跃员工 userId 列表接口，供考勤结算按员工维度处理。
+* 新增 `scripts/smoke-p1-attendance-xxl-job.ps1`，固化考勤/XXL-JOB 网关冒烟。
 
 本轮已验证：
 
@@ -125,6 +129,8 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 * `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-file-minio.ps1`
 * `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-message-rabbitmq.ps1`
 * `npm run test:e2e:microservice`（`E2E_BASE_URL=http://127.0.0.1:5175`）
+* `mvn -pl smart-office-services/smart-office-attendance-service -am test`
+* `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-attendance-xxl-job.ps1`
 
 ## 5. 当前目标与步骤
 
@@ -157,12 +163,12 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 4. message-service 接入 RabbitMQ 审批通知异步化。
 5. `scripts/smoke-p1-message-rabbitmq.ps1` 覆盖审批通知 RabbitMQ 网关链路。
 6. 前端 Playwright 冒烟稳定切到 microservice 模式。
+7. attendance-service 接入 XXL-JOB 每日结算和月度统计。
 
 下一步：
 
-1. attendance-service 接 XXL-JOB 每日结算和月度统计。
-2. search-service 接 Elasticsearch 索引同步和全文检索。
-3. auth-service 补 Redis Token 存储和退出失效。
+1. search-service 接 Elasticsearch 索引同步和全文检索。
+2. auth-service 补 Redis Token 存储和退出失效。
 
 验收标准：
 
@@ -199,10 +205,9 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 ## 6. 推荐执行顺序
 
 ```text
-1. XXL-JOB 考勤结算
-2. Elasticsearch 制度文档检索
-3. Redis Token 与退出失效
-4. ai-service 独立迁移
+1. Elasticsearch 制度文档检索
+2. Redis Token 与退出失效
+3. ai-service 独立迁移
 ```
 
 每完成一项，都需要同步更新：

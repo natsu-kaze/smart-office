@@ -17,4 +17,7 @@ public interface OrgEmployeeClient {
 
     @GetMapping("/department/{departmentId}/user-ids")
     Result<List<Long>> listUserIdsByDepartmentId(@PathVariable("departmentId") Long departmentId);
+
+    @GetMapping("/user-ids")
+    Result<List<Long>> listActiveUserIds();
 }

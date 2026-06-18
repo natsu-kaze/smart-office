@@ -219,6 +219,11 @@ public class AttendanceService {
                 .filter(record -> record.getCheckInStatus() == AttendanceStatus.NORMAL
                         && record.getCheckOutStatus() == AttendanceStatus.NORMAL)
                 .count();
+        int missingCount = records.stream().mapToInt(this::missingPunchCount).sum();
+        long leaveDays = records.stream()
+                .filter(record -> record.getCheckInStatus() == AttendanceStatus.LEAVE
+                        || record.getCheckOutStatus() == AttendanceStatus.LEAVE)
+                .count();
         CurrentUserDTO user = safeUser(userId);
         return AttendanceSummaryVO.builder()
                 .userId(userId)
@@ -227,10 +232,21 @@ public class AttendanceService {
                 .normalDays(normalDays)
                 .lateCount(lateCount)
                 .earlyLeaveCount(earlyLeaveCount)
-                .missingCount(0)
-                .leaveDays(java.math.BigDecimal.ZERO)
+                .missingCount(missingCount)
+                .leaveDays(java.math.BigDecimal.valueOf(leaveDays))
                 .overtimeHours(java.math.BigDecimal.ZERO)
                 .build();
+    }
+
+    private int missingPunchCount(AttendanceRecord record) {
+        int count = 0;
+        if (record.getCheckInStatus() == AttendanceStatus.MISSING) {
+            count++;
+        }
+        if (record.getCheckOutStatus() == AttendanceStatus.MISSING) {
+            count++;
+        }
+        return count;
     }
 
     private AttendanceRecordVO toRecordVO(AttendanceRecord record) {

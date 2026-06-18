@@ -57,6 +57,8 @@ docker/mysql/init/03-xxl-job.sql
 | MinIO | http://localhost:9001 | smartoffice / smartoffice123456 |
 | XXL-JOB | http://localhost:8088/xxl-job-admin | admin / 123456 |
 
+XXL-JOB 初始化脚本会预置 `smart-office-job-executor` 执行器，以及 `attendanceDailySettlementJob`、`attendanceMonthlySummaryJob` 两条考勤任务，默认处于停止状态。
+
 如果需要重建数据库，删除 Docker volume 后重新启动：
 
 ```powershell

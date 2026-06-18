@@ -27,4 +27,9 @@ public class InternalOrgEmployeeController {
     public Result<List<Long>> listUserIdsByDepartmentId(@PathVariable Long departmentId) {
         return Result.success(orgService.listUserIdsByDepartmentId(departmentId));
     }
+
+    @GetMapping("/user-ids")
+    public Result<List<Long>> listActiveUserIds() {
+        return Result.success(orgService.listActiveUserIds());
+    }
 }

@@ -113,6 +113,8 @@ gateway 负责统一入口和身份透传：
 * system-service 已补 `/api/system/users` 用户分页接口，前端用户管理页可通过 gateway 访问。
 * common 已补 JavaScript 安全整数序列化，避免 Snowflake Long ID 在浏览器侧精度丢失。
 * smart-office-web 已补 microservice 模式 Playwright 冒烟。
+* attendance-service 已接入 XXL-JOB 执行器，支持每日缺卡结算和月度统计任务。
+* org-service 已补内部活跃员工 userId 列表接口，供 attendance-service 通过 Feign 获取结算对象。
 
 已验证：
 
@@ -140,6 +142,10 @@ gateway 负责统一入口和身份透传：
   * `manager/123456` 审批通过。
   * employee 在消息中心看到审批通过通知。
   * employee 在文件中心上传文件并看到记录。
+* `scripts/smoke-p1-attendance-xxl-job.ps1` 已覆盖 attendance/XXL-JOB 网关链路：
+  * XXL-JOB Admin 可访问。
+  * 内部任务接口触发每日缺卡结算和月度统计。
+  * employee 通过 gateway 查询到缺卡记录和月度 `missingCount`。
 
 ## 7. 推荐启动顺序
 
@@ -177,8 +183,7 @@ npm run test:e2e:microservice
 
 ## 8. 后续顺序
 
-1. attendance-service 接入 XXL-JOB 每日结算和月度统计。
-2. RabbitMQ 后续扩展考勤异常通知和消费幂等。
-3. search-service 接入 Elasticsearch 索引同步和全文检索。
-4. auth-service 补 Redis Token 存储和退出失效。
-5. ai-service 独立迁移，保持 AI 不阻塞主业务流程。
+1. search-service 接入 Elasticsearch 索引同步和全文检索。
+2. auth-service 补 Redis Token 存储和退出失效。
+3. RabbitMQ 后续扩展考勤异常通知和消费幂等。
+4. ai-service 独立迁移，保持 AI 不阻塞主业务流程。

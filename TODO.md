@@ -1,8 +1,8 @@
 # TODO
 
-## 当前执行快照（2026-06-18）
+## 当前执行快照（2026-06-19）
 
-当前微服务主链路已经跑通，P1 的 MinIO 文件上传、RabbitMQ 审批通知异步化和前端 microservice Playwright 冒烟已通过。接下来不再扩展单体，主线转为补齐微服务版非 AI 中间件能力，优先补 XXL-JOB 考勤结算。
+当前微服务主链路已经跑通，P1 的 MinIO 文件上传、RabbitMQ 审批通知异步化、前端 microservice Playwright 冒烟和 XXL-JOB 考勤结算已通过。接下来不再扩展单体，主线转为补齐微服务版非 AI 中间件能力，优先补 Elasticsearch 制度文档检索。
 
 已完成：
 * [x] approval-service 提交审批时创建审批节点、审批待办和审批通知。
@@ -22,6 +22,9 @@
 * [x] system-service 新增 `/api/system/users` 用户分页接口，支持前端用户管理页从 gateway 访问。
 * [x] common 新增 JavaScript 安全整数序列化策略，避免 Snowflake Long ID 在前端精度丢失。
 * [x] smart-office-web microservice 模式补齐 Playwright 冒烟，覆盖登录、页面访问、审批、消息、文件上传。
+* [x] attendance-service 接入 XXL-JOB 执行器，新增每日缺卡结算和月度统计任务。
+* [x] org-service 新增内部活跃员工 userId 列表接口，供考勤结算按员工维度处理。
+* [x] 新增 `scripts/smoke-p1-attendance-xxl-job.ps1`，固化考勤/XXL-JOB 网关冒烟链路。
 
 已验证：
 * [x] `mvn -pl smart-office-services/smart-office-approval-service -am test`
@@ -32,12 +35,13 @@
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-file-minio.ps1`
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-message-rabbitmq.ps1`
 * [x] `npm run test:e2e:microservice`（`E2E_BASE_URL=http://127.0.0.1:5175`）
+* [x] `mvn -pl smart-office-services/smart-office-attendance-service -am test`
+* [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-attendance-xxl-job.ps1`
 
 当前下一步：
-1. attendance-service 接入 XXL-JOB，补每日考勤结算与月度统计。
-2. search-service 接入 Elasticsearch，补制度文档索引同步与全文检索。
-3. auth-service 接入 Redis Token 存储与退出失效。
-4. 最后迁移 ai-service，AI 不阻塞办公主流程。
+1. search-service 接入 Elasticsearch，补制度文档索引同步与全文检索。
+2. auth-service 接入 Redis Token 存储与退出失效。
+3. 最后迁移 ai-service，AI 不阻塞办公主流程。
 
 ## 当前目标与步骤
 
@@ -50,17 +54,16 @@
 * [x] 补 file-service 真实 MinIO 上传、下载、预览。
 * [x] 补 message-service RabbitMQ 异步通知。
 * [x] 将前端代理稳定切到 gateway，并补 Playwright microservice 冒烟。
-* [ ] 补 attendance-service XXL-JOB 考勤结算与月度统计。
+* [x] 补 attendance-service XXL-JOB 考勤结算与月度统计。
 * [ ] 补 search-service Elasticsearch 索引同步与全文检索。
 * [ ] 补 auth-service Redis Token 存储与退出失效。
 * [ ] 最后迁移 ai-service，AI 能力不阻塞办公主流程。
 
 推荐执行顺序：
 
-1. XXL-JOB 考勤结算。
-2. Elasticsearch 制度文档检索。
-3. Redis Token 与退出失效。
-4. ai-service 独立迁移。
+1. Elasticsearch 制度文档检索。
+2. Redis Token 与退出失效。
+3. ai-service 独立迁移。
 
 下面保留详细模块清单和历史进度，后续每完成一项同步勾选。
 
@@ -121,7 +124,7 @@
 * [x] RabbitMQ
 * [x] Elasticsearch
 * [x] MinIO
-* [ ] XXL-JOB
+* [x] XXL-JOB
 
 ## 3. 用户与认证模块
 
@@ -271,8 +274,8 @@
 * [x] 默认下班时间 18:00
 * [x] 晚于 09:00 上班打卡为迟到
 * [x] 早于 18:00 下班打卡为早退
-* [ ] 未上班打卡为上班缺卡
-* [ ] 未下班打卡为下班缺卡
+* [x] 未上班打卡为上班缺卡
+* [x] 未下班打卡为下班缺卡
 * [ ] 请假审批通过后同步影响考勤状态
 * [ ] 加班审批通过后同步影响加班记录
 * [x] 防止重复上班打卡
@@ -372,18 +375,18 @@
 
 ## 10. XXL-JOB 定时任务
 
-* [ ] 接入 XXL-JOB
-* [ ] 创建每日考勤结算任务
+* [x] 接入 XXL-JOB
+* [x] 创建每日考勤结算任务
 * [ ] 创建审批超时扫描任务
-* [ ] 创建月度考勤统计任务
+* [x] 创建月度考勤统计任务
 * [ ] 创建 ES 数据同步任务
 * [ ] 创建过期消息清理任务
 
 任务说明：
 
-* [ ] 每日 23:50 结算当天考勤
+* [x] 每日 23:50 结算当天考勤
 * [ ] 每 10 分钟扫描审批超时
-* [ ] 每月 1 日生成上月考勤统计
+* [x] 每月 1 日生成上月考勤统计
 * [ ] 每天凌晨同步 ES 索引
 * [ ] 每天凌晨清理过期消息
 
@@ -554,7 +557,7 @@ finance / 123456
 * [ ] Redisson 防重复审批
 * [x] RabbitMQ 异步通知
 * [x] MinIO 文件上传
-* [ ] XXL-JOB 考勤结算
+* [x] XXL-JOB 考勤结算
 * [ ] AI 审批摘要
 * [ ] AI 智能填单
 
@@ -598,9 +601,8 @@ finance / 123456
 
 ### 下一步建议
 
-1. 接入 XXL-JOB：每日考勤结算、月度统计、审批超时扫描。
-2. 接入 Elasticsearch：制度文档索引同步与全文检索。
-3. 接入 Redis Token：登录态存储、退出失效、后续再补刷新策略。
+1. 接入 Elasticsearch：制度文档索引同步与全文检索。
+2. 接入 Redis Token：登录态存储、退出失效、后续再补刷新策略。
 ## 18. 微服务版本迁移进度
 
 * [x] common 已补齐统一返回、分页、业务异常、全局异常处理、BaseEntity、MyBatis-Plus 分页/乐观锁/自动填充配置
@@ -660,10 +662,9 @@ finance / 123456
 
 下一步：
 
-1. attendance-service 接 XXL-JOB 每日结算和月度统计。
-2. search-service 接 Elasticsearch 索引同步与全文检索。
-3. auth-service 接 Redis Token 存储与退出失效。
-4. 最后迁 ai-service，占位不阻塞当前办公主流程。
+1. search-service 接 Elasticsearch 索引同步与全文检索。
+2. auth-service 接 Redis Token 存储与退出失效。
+3. 最后迁 ai-service，占位不阻塞当前办公主流程。
 
 ## 21. gateway 鉴权与业务服务迁移进度
 
@@ -678,5 +679,5 @@ finance / 123456
 
 下一步：
 
-1. 开始补 XXL-JOB 考勤结算。
-2. 继续补 ES 检索、Redis Token 这些中间件型能力。
+1. 开始补 Elasticsearch 制度文档索引同步与全文检索。
+2. 继续补 Redis Token 这些中间件型能力。

@@ -114,3 +114,31 @@ INSERT IGNORE INTO `xxl_job_user` (`id`, `username`, `password`, `role`, `permis
 VALUES (1, 'admin', 'e10adc3949ba59abbe56e057f20f883e', 1, NULL);
 
 INSERT IGNORE INTO `xxl_job_lock` (`lock_name`) VALUES ('schedule_lock');
+
+INSERT IGNORE INTO `xxl_job_info` (
+  `id`, `job_group`, `job_desc`, `add_time`, `update_time`, `author`,
+  `schedule_type`, `schedule_conf`, `misfire_strategy`, `executor_route_strategy`,
+  `executor_handler`, `executor_param`, `executor_block_strategy`, `executor_timeout`,
+  `executor_fail_retry_count`, `glue_type`, `glue_remark`, `glue_updatetime`,
+  `trigger_status`, `trigger_last_time`, `trigger_next_time`
+) VALUES (
+  1001, 1, 'Smart Office daily attendance settlement', NOW(), NOW(), 'codex',
+  'CRON', '0 50 23 * * ?', 'DO_NOTHING', 'FIRST',
+  'attendanceDailySettlementJob', '', 'SERIAL_EXECUTION', 60,
+  1, 'BEAN', 'daily attendance settlement', NOW(),
+  0, 0, 0
+);
+
+INSERT IGNORE INTO `xxl_job_info` (
+  `id`, `job_group`, `job_desc`, `add_time`, `update_time`, `author`,
+  `schedule_type`, `schedule_conf`, `misfire_strategy`, `executor_route_strategy`,
+  `executor_handler`, `executor_param`, `executor_block_strategy`, `executor_timeout`,
+  `executor_fail_retry_count`, `glue_type`, `glue_remark`, `glue_updatetime`,
+  `trigger_status`, `trigger_last_time`, `trigger_next_time`
+) VALUES (
+  1002, 1, 'Smart Office monthly attendance summary', NOW(), NOW(), 'codex',
+  'CRON', '0 10 1 1 * ?', 'DO_NOTHING', 'FIRST',
+  'attendanceMonthlySummaryJob', '', 'SERIAL_EXECUTION', 120,
+  1, 'BEAN', 'monthly attendance summary', NOW(),
+  0, 0, 0
+);

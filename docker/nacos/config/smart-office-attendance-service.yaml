@@ -1,3 +1,13 @@
 smart-office:
   service:
     module: attendance
+  xxl-job:
+    enabled: ${XXL_JOB_ENABLED:true}
+    admin-addresses: ${XXL_JOB_ADMIN_ADDRESSES:http://127.0.0.1:8088/xxl-job-admin}
+    app-name: ${XXL_JOB_APP_NAME:smart-office-job-executor}
+    address: ${XXL_JOB_EXECUTOR_ADDRESS:}
+    ip: ${XXL_JOB_EXECUTOR_IP:}
+    port: ${XXL_JOB_EXECUTOR_PORT:9999}
+    access-token: ${XXL_JOB_ACCESS_TOKEN:smart-office}
+    log-path: ${XXL_JOB_LOG_PATH:logs/xxl-job}
+    log-retention-days: ${XXL_JOB_LOG_RETENTION_DAYS:30}

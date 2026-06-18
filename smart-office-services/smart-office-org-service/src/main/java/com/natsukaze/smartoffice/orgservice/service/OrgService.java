@@ -258,6 +258,15 @@ public class OrgService {
                 .toList();
     }
 
+    public List<Long> listActiveUserIds() {
+        return employeeMapper.selectList(new LambdaQueryWrapper<OrgEmployee>()
+                        .eq(OrgEmployee::getEmploymentStatus, "ACTIVE"))
+                .stream()
+                .map(OrgEmployee::getUserId)
+                .distinct()
+                .toList();
+    }
+
     @Transactional
     public EmployeeVO createEmployee(EmployeeSaveRequest request) {
         ensureEmployeeNoAvailable(request.getEmployeeNo(), null);
