@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS approval_form (
     title VARCHAR(128) NOT NULL,
     applicant_user_id BIGINT NOT NULL,
     applicant_dept_id BIGINT DEFAULT NULL,
-    content JSON DEFAULT NULL,
+    content TEXT DEFAULT NULL,
     amount DECIMAL(12,2) DEFAULT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'DRAFT',
     current_approver_id BIGINT DEFAULT NULL,

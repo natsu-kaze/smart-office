@@ -103,6 +103,7 @@ gateway 负责统一入口和身份透传：
   * 提交审批创建审批节点、待办和通知。
   * 审批通过、驳回、撤回、关闭完成待办并更新审批节点。
   * message-service 命令失败时 approval-service 抛出业务异常。
+  * `approval_form.content` 已从 `JSON` 调整为 `TEXT`，支持普通表单文本内容。
 * 前端审批中心支持保存草稿、保存并提交、提交草稿、通过、驳回。
 * 前端新增消息中心，支持待办列表、通知列表、标记完成、标记已读。
 
@@ -113,13 +114,13 @@ gateway 负责统一入口和身份透传：
 * `npm run build`（smart-office-web）
 * `git diff --check`
 * gateway 基础冒烟已覆盖登录、鉴权、当前用户、考勤、文件、制度文档。
-
-待验证：
-
-* gateway 运行时审批/消息闭环：
+* `scripts/smoke-p0-approval-message.ps1` 已覆盖 approval/message 网关主链路：
   * `employee/123456` 创建并提交审批。
   * `manager/123456` 查看审批待办并审批。
   * manager 待办完成，employee 收到结果通知。
+
+待验证：
+
 * `smart-office-web` 使用 `npm run dev -- --mode microservice` 连接 gateway 后的 Playwright 冒烟。
 
 ## 7. 推荐启动顺序
@@ -144,9 +145,9 @@ npm run dev -- --mode microservice
 
 ## 8. 后续顺序
 
-1. 完成 approval/message gateway 运行时联调。
+1. file-service 接入 MinIO 真实上传、下载、预览。
 2. 将 Playwright 冒烟切到 microservice 模式。
-3. file-service 接入 MinIO 真实上传、下载、预览。
+3. 补文件链路前端入口与 HTTP 冒烟。
 4. message-service 接入 RabbitMQ 异步通知。
 5. attendance-service 接入 XXL-JOB 每日结算和月度统计。
 6. search-service 接入 Elasticsearch 索引同步和全文检索。

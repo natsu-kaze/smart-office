@@ -2,7 +2,7 @@
 
 ## 当前执行快照（2026-06-18）
 
-本轮已推进 P0 的代码闭环，运行时 gateway 联调还需要下一轮启动服务后验证。
+P0 approval/message gateway 运行时联调已通过，下一步进入 P1：MinIO 文件上传。
 
 已完成：
 * [x] approval-service 提交审批时创建审批节点、审批待办和审批通知。
@@ -11,18 +11,21 @@
 * [x] smart-office-web 审批中心支持保存草稿、保存并提交、提交草稿、审批通过、审批驳回。
 * [x] smart-office-web 新增消息中心，支持查看待办、查看通知、标记待办完成、标记通知已读。
 * [x] 新增 approval-service 单元测试覆盖提交、审批通过、消息命令失败三条链路。
+* [x] 修复审批内容字段类型：`approval_form.content` 从 `JSON` 调整为 `TEXT`。
+* [x] 新增 `scripts/smoke-p0-approval-message.ps1`，固化 P0 网关冒烟链路。
 
 已验证：
 * [x] `mvn -pl smart-office-services/smart-office-approval-service -am test`
 * [x] `mvn test`
 * [x] `npm run build`（smart-office-web）
 * [x] `git diff --check`
+* [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p0-approval-message.ps1`
 
 下一步：
-1. 启动 gateway、auth、system、org、approval、message，做真实 HTTP 冒烟。
-2. 用 employee 创建并提交审批，用 manager 审批，验证 manager 待办完成、employee 通知生成。
-3. 将 Playwright 冒烟切到 `--mode microservice`，覆盖审批和消息中心。
-4. P0 运行时验证通过后，进入 P1：MinIO 文件上传。
+1. file-service 接入 MinIO 真实上传、下载、预览。
+2. 前端补文件选择上传入口。
+3. 补文件链路 HTTP 冒烟。
+4. 再将 Playwright 冒烟切到 `--mode microservice`，覆盖审批和消息中心。
 
 ## 当前目标与步骤
 

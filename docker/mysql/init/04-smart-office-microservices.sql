@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS `smart_office_approval`.`approval_record` LIKE `smart
 CREATE TABLE IF NOT EXISTS `smart_office_approval`.`approval_process` LIKE `smart_office`.`approval_process`;
 CREATE TABLE IF NOT EXISTS `smart_office_approval`.`approval_rule` LIKE `smart_office`.`approval_rule`;
 CREATE TABLE IF NOT EXISTS `smart_office_approval`.`approval_attachment` LIKE `smart_office`.`approval_attachment`;
+ALTER TABLE `smart_office_approval`.`approval_form` MODIFY COLUMN `content` TEXT DEFAULT NULL;
 
 CREATE TABLE IF NOT EXISTS `smart_office_attendance`.`attendance_rule` LIKE `smart_office`.`attendance_rule`;
 CREATE TABLE IF NOT EXISTS `smart_office_attendance`.`attendance_record` LIKE `smart_office`.`attendance_record`;

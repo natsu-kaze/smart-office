@@ -93,7 +93,7 @@ C:\Users\14224\.jdks\ms-17.0.18\bin\java.exe
 
 ## 4. 2026-06-18 进展快照
 
-P0 的代码层闭环已补齐，运行时 gateway 联调仍是下一步重点。
+P0 的代码层闭环和 gateway 运行时联调已通过，下一步进入 P1：MinIO 文件上传。
 
 本轮完成：
 
@@ -103,6 +103,8 @@ P0 的代码层闭环已补齐，运行时 gateway 联调仍是下一步重点�
 * smart-office-web 审批中心支持保存草稿、保存并提交、提交草稿、通过、驳回。
 * smart-office-web 新增消息中心，支持待办列表、通知列表、标记完成、标记已读。
 * 新增 approval-service 单元测试覆盖提交、审批通过和消息命令失败。
+* 修复审批内容字段类型：`approval_form.content` 从 `JSON` 调整为 `TEXT`。
+* 新增 `scripts/smoke-p0-approval-message.ps1`，固化审批/消息网关冒烟。
 
 本轮已验证：
 
@@ -110,20 +112,21 @@ P0 的代码层闭环已补齐，运行时 gateway 联调仍是下一步重点�
 * `mvn test`
 * `npm run build`（smart-office-web）
 * `git diff --check`
+* `powershell -ExecutionPolicy Bypass -File scripts/smoke-p0-approval-message.ps1`
 
 ## 5. 下一阶段目标
 
 ### P0：微服务主链路联调
 
-剩余验收步骤：
+已验收：
 
-1. 启动 Docker 中间件。
-2. 启动 gateway、auth、system、org、approval、message。
+1. Docker 中间件健康。
+2. gateway、auth、system、org、approval、message 健康。
 3. 通过 gateway 使用 `employee/123456` 登录并创建审批草稿。
-4. 提交审批单，验证 approval-service 调用 message-service 生成审批待办。
+4. 提交审批单，approval-service 调用 message-service 生成审批待办。
 5. 通过 gateway 使用 `manager/123456` 登录并处理审批。
-6. 验证待办完成和申请人通知生成。
-7. 跑 Playwright 网关冒烟，覆盖登录、审批提交、待办、通知。
+6. manager 待办变为 `DONE`，employee 收到 `Approval passed` 通知。
+7. 冒烟脚本 `scripts/smoke-p0-approval-message.ps1` 通过。
 
 验收标准：
 
