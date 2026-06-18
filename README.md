@@ -413,10 +413,12 @@ $env:RABBITMQ_PORT='5673'
 
 ## 当前开发目标
 
-当前目标是继续补齐微服务版本的中间件能力，并让前端逐步切到 gateway：
+当前项目已从单体模块化进入微服务联调和中间件补齐阶段：
 
-1. gateway 登录、鉴权、身份透传和审批/消息主链路已通过。
-2. file-service 已接入 MinIO 上传、预览、下载，并新增文件中心。
-3. 下一步补 RabbitMQ 异步通知、XXL-JOB 考勤结算、Elasticsearch 制度文档检索。
-4. 将前端代理切到 gateway，补 Playwright microservice 冒烟。
-5. 最后迁移 AI 独立能力，AI 不阻塞审批、考勤、组织、消息主流程。
+1. 已完成 gateway 登录、鉴权、身份透传和 approval/message 主链路冒烟。
+2. 已完成 file-service MinIO 上传、预览、下载和前端文件中心。
+3. 当前优先补 message-service RabbitMQ 异步通知。
+4. 随后补 Playwright microservice 冒烟、XXL-JOB 考勤结算、Elasticsearch 制度文档检索、Redis Token 与退出失效。
+5. AI 模块最后独立迁移，且不阻塞审批、考勤、组织、消息等主流程。
+
+更细的目标、步骤和验收命令见 [docs/project-roadmap.md](docs/project-roadmap.md) 与 [TODO.md](TODO.md)。

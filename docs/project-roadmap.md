@@ -118,9 +118,9 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 * `powershell -ExecutionPolicy Bypass -File scripts/smoke-p0-approval-message.ps1`
 * `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-file-minio.ps1`
 
-## 5. 下一阶段目标
+## 5. 当前目标与步骤
 
-### P0：微服务主链路联调
+### 已完成：P0 微服务主链路联调
 
 已验收：
 
@@ -139,14 +139,22 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 * 下游服务只信任 gateway 透传的 `X-User-Id`。
 * `mvn test`、前端构建和核心 HTTP 冒烟都通过。
 
-### P1：中间件能力补齐
+### 当前进行：P1 中间件能力补齐
+
+已完成：
 
 1. file-service 接入 MinIO 真实上传、下载、预览。
-   * 已完成：上传、预览 URL、服务端下载、前端文件中心、网关冒烟。
-2. message-service 接 RabbitMQ 异步通知。
-3. attendance-service 接 XXL-JOB 每日结算和月度统计。
-4. search-service 接 Elasticsearch 索引同步和全文检索。
-5. auth-service 补 Redis Token 存储和退出失效。
+2. 前端文件中心支持上传、预览、下载。
+3. `scripts/smoke-p1-file-minio.ps1` 覆盖文件/MinIO 网关链路。
+
+下一步：
+
+1. message-service 接 RabbitMQ 异步通知。
+2. 补 RabbitMQ 交换机、队列、消费者、失败降级和 HTTP 冒烟脚本。
+3. 将前端 Playwright 冒烟稳定切到 microservice 模式。
+4. attendance-service 接 XXL-JOB 每日结算和月度统计。
+5. search-service 接 Elasticsearch 索引同步和全文检索。
+6. auth-service 补 Redis Token 存储和退出失效。
 
 验收标准：
 
@@ -154,12 +162,12 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 * 中间件不可用时，主业务能给出明确错误或降级。
 * 文档记录本机启动方式、配置项和验证命令。
 
-### P2：前端切换到微服务
+### P2：前端体验补齐
 
 1. 使用 `smart-office-web/.env.microservice` 将 API 代理指向 gateway `8000`。
 2. 调整前端接口路径，优先走微服务已迁移接口。
-3. 补审批详情、消息中心、文件与制度文档页面。
-4. 用 Playwright 做登录、审批、考勤、文件、制度文档冒烟。
+3. 补审批详情、考勤记录、制度文档检索等页面。
+4. 用 Playwright 做登录、审批、消息、考勤、文件、制度文档冒烟。
 
 验收标准：
 
@@ -182,14 +190,12 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 ## 6. 推荐执行顺序
 
 ```text
-1. approval/message gateway 运行时联调
-2. 前端 microservice 模式 Playwright 冒烟
-3. MinIO 文件上传
-4. RabbitMQ 消息异步化
-5. XXL-JOB 考勤结算
-6. Elasticsearch 制度文档检索
-7. Redis Token 与退出失效
-8. ai-service 独立迁移
+1. RabbitMQ 消息异步化
+2. Playwright microservice 冒烟
+3. XXL-JOB 考勤结算
+4. Elasticsearch 制度文档检索
+5. Redis Token 与退出失效
+6. ai-service 独立迁移
 ```
 
 每完成一项，都需要同步更新：

@@ -132,9 +132,15 @@ gateway 负责统一入口和身份透传：
 
 ## 7. 推荐启动顺序
 
+先启动 Docker 中间件并确认 Nacos 配置导入完成：
+
 ```powershell
 docker compose -f docker/docker-compose.yml up -d
+```
 
+再启动当前主链路服务：
+
+```powershell
 mvn -pl smart-office-services/smart-office-system-service spring-boot:run
 mvn -pl smart-office-services/smart-office-org-service spring-boot:run
 mvn -pl smart-office-services/smart-office-auth-service spring-boot:run
@@ -152,11 +158,9 @@ npm run dev -- --mode microservice
 
 ## 8. 后续顺序
 
-1. message-service 接入 RabbitMQ 异步通知。
-2. 将 Playwright 冒烟切到 microservice 模式。
-3. XXL-JOB 考勤结算。
-4. message-service 接入 RabbitMQ 异步通知。
-5. attendance-service 接入 XXL-JOB 每日结算和月度统计。
-6. search-service 接入 Elasticsearch 索引同步和全文检索。
-7. auth-service 补 Redis Token 存储和退出失效。
-8. ai-service 独立迁移。
+1. message-service 接入 RabbitMQ 异步通知，先覆盖审批结果通知，再扩展考勤异常通知。
+2. 将 Playwright 冒烟切到 microservice 模式，覆盖登录、审批、消息、文件中心。
+3. attendance-service 接入 XXL-JOB 每日结算和月度统计。
+4. search-service 接入 Elasticsearch 索引同步和全文检索。
+5. auth-service 补 Redis Token 存储和退出失效。
+6. ai-service 独立迁移，保持 AI 不阻塞主业务流程。

@@ -2,7 +2,7 @@
 
 ## 当前执行快照（2026-06-18）
 
-P1 MinIO 文件上传链路已通过，下一步进入 RabbitMQ 消息异步化。
+当前微服务主链路已经跑通，P1 的 MinIO 文件上传链路也已通过。接下来不再扩展单体，主线转为补齐微服务版非 AI 中间件能力，优先进入 RabbitMQ 消息异步化。
 
 已完成：
 * [x] approval-service 提交审批时创建审批节点、审批待办和审批通知。
@@ -25,11 +25,12 @@ P1 MinIO 文件上传链路已通过，下一步进入 RabbitMQ 消息异步化�
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p0-approval-message.ps1`
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-file-minio.ps1`
 
-下一步：
+当前下一步：
 1. message-service 接入 RabbitMQ 异步通知。
 2. 补 RabbitMQ 队列、交换机、消费者配置与降级策略。
-3. 补消息异步链路 HTTP 冒烟。
-4. 再将 Playwright 冒烟切到 `--mode microservice`，覆盖审批、消息、文件中心。
+3. 补消息异步链路 HTTP 冒烟，并保留 message-service 不可用时的明确错误或降级策略。
+4. 将 Playwright 冒烟切到 `--mode microservice`，覆盖登录、审批、消息、文件中心。
+5. 之后依次补 XXL-JOB 考勤结算、Elasticsearch 制度文档检索、Redis Token 与退出失效。
 
 ## 当前目标与步骤
 
@@ -37,25 +38,24 @@ P1 MinIO 文件上传链路已通过，下一步进入 RabbitMQ 消息异步化�
 
 当前主线目标：
 
-* [ ] 跑通微服务版审批主链路：gateway -> auth/system/org/approval/message。
-* [ ] 验证审批提交后生成待办，审批处理后完成待办并生成通知。
-* [ ] 将前端代理逐步切到 gateway，并补 Playwright 网关冒烟。
+* [x] 跑通微服务版审批主链路：gateway -> auth/system/org/approval/message。
+* [x] 验证审批提交后生成待办，审批处理后完成待办并生成通知。
 * [x] 补 file-service 真实 MinIO 上传、下载、预览。
 * [ ] 补 message-service RabbitMQ 异步通知。
+* [ ] 将前端代理稳定切到 gateway，并补 Playwright microservice 冒烟。
 * [ ] 补 attendance-service XXL-JOB 考勤结算与月度统计。
 * [ ] 补 search-service Elasticsearch 索引同步与全文检索。
+* [ ] 补 auth-service Redis Token 存储与退出失效。
 * [ ] 最后迁移 ai-service，AI 能力不阻塞办公主流程。
 
 推荐执行顺序：
 
-1. approval/message 网关联调。
-2. 前端切 gateway。
-3. MinIO 文件上传。
-4. RabbitMQ 消息异步化。
-5. XXL-JOB 考勤结算。
-6. Elasticsearch 制度文档检索。
-7. Redis Token 与退出失效。
-8. ai-service 独立迁移。
+1. RabbitMQ 消息异步化。
+2. Playwright microservice 冒烟。
+3. XXL-JOB 考勤结算。
+4. Elasticsearch 制度文档检索。
+5. Redis Token 与退出失效。
+6. ai-service 独立迁移。
 
 下面保留详细模块清单和历史进度，后续每完成一项同步勾选。
 
@@ -314,15 +314,15 @@ P1 MinIO 文件上传链路已通过，下一步进入 RabbitMQ 消息异步化�
 
 ### MinIO
 
-* [ ] 接入 MinIO
-* [ ] 创建 bucket
+* [x] 接入 MinIO
+* [x] 创建 bucket
 * [ ] 配置文件上传大小限制
 * [ ] 配置允许上传的文件类型
 
 ### 后端接口
 
-* [ ] 文件上传接口
-* [ ] 文件下载接口
+* [x] 文件上传接口
+* [x] 文件下载接口
 * [x] 文件删除接口
 * [x] 文件详情接口
 * [x] 获取文件预览地址接口
@@ -547,7 +547,7 @@ finance / 123456
 * [ ] Redis Token
 * [ ] Redisson 防重复审批
 * [ ] RabbitMQ 异步通知
-* [ ] MinIO 文件上传
+* [x] MinIO 文件上传
 * [ ] XXL-JOB 考勤结算
 * [ ] AI 审批摘要
 * [ ] AI 智能填单
@@ -591,9 +591,11 @@ finance / 123456
 
 ### 下一步建议
 
-1. 联调 approval/message，跑通审批提交、待办生成、审批处理、通知生成。
-2. 前端代理切到 gateway:8000，并补完整 Playwright 网关冒烟测试。
-3. 补 MinIO、RabbitMQ、XXL-JOB、Elasticsearch、Redis Token。
+1. 接入 RabbitMQ：审批通知先异步化，补交换机、队列、消费者、失败降级和冒烟脚本。
+2. 前端代理稳定切到 gateway:8000，并补完整 Playwright microservice 冒烟测试。
+3. 接入 XXL-JOB：每日考勤结算、月度统计、审批超时扫描。
+4. 接入 Elasticsearch：制度文档索引同步与全文检索。
+5. 接入 Redis Token：登录态存储、退出失效、后续再补刷新策略。
 ## 18. 微服务版本迁移进度
 
 * [x] common 已补齐统一返回、分页、业务异常、全局异常处理、BaseEntity、MyBatis-Plus 分页/乐观锁/自动填充配置
@@ -653,10 +655,11 @@ finance / 123456
 
 下一步：
 
-1. 联调 approval/message：通过 gateway 完成审批提交、待办生成、审批通过/驳回、通知创建链路。
-2. 补 file-service 真实 MinIO 上传接口，并让前端文件选择器走上传而不是只写记录。
-3. 给 search-service 接 Elasticsearch 索引同步与全文检索。
-4. 最后迁 ai-service，占位不阻塞当前办公主流程。
+1. message-service 接 RabbitMQ 异步通知，先覆盖审批结果通知。
+2. 前端 microservice 模式补 Playwright 冒烟，覆盖审批、消息、文件中心。
+3. attendance-service 接 XXL-JOB 每日结算和月度统计。
+4. search-service 接 Elasticsearch 索引同步与全文检索。
+5. 最后迁 ai-service，占位不阻塞当前办公主流程。
 
 ## 21. gateway 鉴权与业务服务迁移进度
 
@@ -670,6 +673,6 @@ finance / 123456
 
 下一步：
 
-1. 跑 approval/message 的网关联调，重点验证审批提交后 message-service 生成待办和通知。
-2. 将前端代理从单体逐步切到 gateway，补一轮 Playwright 网关冒烟。
-3. 开始补 MinIO 上传、ES 检索、XXL-JOB 考勤结算这些中间件型能力。
+1. message-service 接 RabbitMQ 异步通知，补队列、交换机、消费者和失败降级。
+2. 将前端代理从单体稳定切到 gateway，补一轮 Playwright microservice 冒烟。
+3. 开始补 XXL-JOB 考勤结算、ES 检索、Redis Token 这些中间件型能力。
