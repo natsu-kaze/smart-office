@@ -124,7 +124,7 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 * `powershell -ExecutionPolicy Bypass -File scripts/smoke-p0-approval-message.ps1`
 * `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-file-minio.ps1`
 * `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-message-rabbitmq.ps1`
-* `npm run test:e2e:microservice`（`E2E_BASE_URL=http://127.0.0.1:5174`）
+* `npm run test:e2e:microservice`（`E2E_BASE_URL=http://127.0.0.1:5175`）
 
 ## 5. 当前目标与步骤
 

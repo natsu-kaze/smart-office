@@ -31,7 +31,7 @@
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p0-approval-message.ps1`
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-file-minio.ps1`
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-message-rabbitmq.ps1`
-* [x] `npm run test:e2e:microservice`（`E2E_BASE_URL=http://127.0.0.1:5174`）
+* [x] `npm run test:e2e:microservice`（`E2E_BASE_URL=http://127.0.0.1:5175`）
 
 当前下一步：
 1. attendance-service 接入 XXL-JOB，补每日考勤结算与月度统计。
