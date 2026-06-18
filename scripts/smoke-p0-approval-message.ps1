@@ -117,14 +117,21 @@ if (-not $doneTodo) {
 }
 Write-Host "completed todo: id=$($doneTodo.id) status=$($doneTodo.status)"
 
-$employeeMessages = Invoke-OfficeApi `
-    -Method Get `
-    -Uri "$BaseUrl/api/messages?current=1&size=10&businessType=APPROVAL" `
-    -Headers (AuthHeaders $employeeToken)
+$notice = $null
+for ($attempt = 1; $attempt -le 20 -and -not $notice; $attempt++) {
+    $employeeMessages = Invoke-OfficeApi `
+        -Method Get `
+        -Uri "$BaseUrl/api/messages?current=1&size=10&businessType=APPROVAL" `
+        -Headers (AuthHeaders $employeeToken)
 
-$notice = @($employeeMessages.data.records | Where-Object {
-        $_.businessId -eq $formId -and $_.title -eq "Approval passed"
-    }) | Select-Object -First 1
+    $notice = @($employeeMessages.data.records | Where-Object {
+            $_.businessId -eq $formId -and $_.title -eq "Approval passed"
+        }) | Select-Object -First 1
+
+    if (-not $notice) {
+        Start-Sleep -Seconds 1
+    }
+}
 
 if (-not $notice) {
     throw "Employee approval passed notice not found for form $formId"

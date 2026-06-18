@@ -108,6 +108,8 @@ gateway 负责统一入口和身份透传：
 * 前端新增消息中心，支持待办列表、通知列表、标记完成、标记已读。
 * file-service 已接入 MinIO，支持真实上传、预览 URL、服务端下载。
 * 前端新增文件中心，支持文件上传、预览、下载。
+* message-service 已接入 RabbitMQ，审批结果通知异步投递到通知队列并由消费者落库。
+* RabbitMQ 通知链路具备投递失败同步降级，避免 MQ 不可用时静默丢通知。
 
 已验证：
 
@@ -125,6 +127,10 @@ gateway 负责统一入口和身份透传：
   * 文件记录写入 MySQL。
   * 预签名 URL 可读取 MinIO 对象。
   * `/api/files/{id}/download` 可下载原始内容。
+* `scripts/smoke-p1-message-rabbitmq.ps1` 已覆盖 message/RabbitMQ 网关链路：
+  * approval/message P0 主链路通过。
+  * RabbitMQ 通知队列为 durable。
+  * 通知消费者已连接，消息消费后无积压。
 
 待验证：
 
@@ -158,9 +164,9 @@ npm run dev -- --mode microservice
 
 ## 8. 后续顺序
 
-1. message-service 接入 RabbitMQ 异步通知，先覆盖审批结果通知，再扩展考勤异常通知。
-2. 将 Playwright 冒烟切到 microservice 模式，覆盖登录、审批、消息、文件中心。
-3. attendance-service 接入 XXL-JOB 每日结算和月度统计。
+1. 将 Playwright 冒烟切到 microservice 模式，覆盖登录、审批、消息、文件中心。
+2. attendance-service 接入 XXL-JOB 每日结算和月度统计。
+3. RabbitMQ 后续扩展考勤异常通知和消费幂等。
 4. search-service 接入 Elasticsearch 索引同步和全文检索。
 5. auth-service 补 Redis Token 存储和退出失效。
 6. ai-service 独立迁移，保持 AI 不阻塞主业务流程。

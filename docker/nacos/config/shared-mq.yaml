@@ -1,7 +1,15 @@
 spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:127.0.0.1}
-    port: ${RABBITMQ_PORT:5672}
+    port: ${RABBITMQ_PORT:5673}
     username: ${RABBITMQ_USERNAME:smartoffice}
     password: ${RABBITMQ_PASSWORD:123456}
     virtual-host: ${RABBITMQ_VHOST:/}
+
+smart-office:
+  message:
+    mq:
+      async-notification-enabled: ${MESSAGE_ASYNC_NOTIFICATION_ENABLED:true}
+      notice-exchange: ${MESSAGE_NOTICE_EXCHANGE:smart-office.message.exchange}
+      notice-queue: ${MESSAGE_NOTICE_QUEUE:smart-office.message.notice.queue}
+      notice-routing-key: ${MESSAGE_NOTICE_ROUTING_KEY:notice.created}

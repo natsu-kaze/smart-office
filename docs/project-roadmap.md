@@ -93,7 +93,7 @@ C:\Users\14224\.jdks\ms-17.0.18\bin\java.exe
 
 ## 4. 2026-06-18 进展快照
 
-P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件上传、预览、下载链路也已通过，下一步进入 RabbitMQ 消息异步化。
+P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件上传、预览、下载链路和 RabbitMQ 审批通知异步化也已通过，下一步进入 Playwright microservice 冒烟和 XXL-JOB 考勤结算。
 
 本轮完成：
 
@@ -108,6 +108,9 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 * file-service 接入 MinIO，支持真实上传、预览 URL、服务端下载。
 * smart-office-web 新增文件中心，支持上传、预览、下载。
 * 新增 `scripts/smoke-p1-file-minio.ps1`，固化文件/MinIO 网关冒烟。
+* message-service 接入 RabbitMQ，审批结果通知异步投递和消费落库。
+* RabbitMQ 已声明通知交换机、通知队列和消费者，投递失败时同步降级保存通知。
+* 新增 `scripts/smoke-p1-message-rabbitmq.ps1`，固化审批通知 RabbitMQ 网关冒烟。
 
 本轮已验证：
 
@@ -117,6 +120,7 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 * `git diff --check`
 * `powershell -ExecutionPolicy Bypass -File scripts/smoke-p0-approval-message.ps1`
 * `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-file-minio.ps1`
+* `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-message-rabbitmq.ps1`
 
 ## 5. 当前目标与步骤
 
@@ -146,15 +150,15 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 1. file-service 接入 MinIO 真实上传、下载、预览。
 2. 前端文件中心支持上传、预览、下载。
 3. `scripts/smoke-p1-file-minio.ps1` 覆盖文件/MinIO 网关链路。
+4. message-service 接入 RabbitMQ 审批通知异步化。
+5. `scripts/smoke-p1-message-rabbitmq.ps1` 覆盖审批通知 RabbitMQ 网关链路。
 
 下一步：
 
-1. message-service 接 RabbitMQ 异步通知。
-2. 补 RabbitMQ 交换机、队列、消费者、失败降级和 HTTP 冒烟脚本。
-3. 将前端 Playwright 冒烟稳定切到 microservice 模式。
-4. attendance-service 接 XXL-JOB 每日结算和月度统计。
-5. search-service 接 Elasticsearch 索引同步和全文检索。
-6. auth-service 补 Redis Token 存储和退出失效。
+1. 将前端 Playwright 冒烟稳定切到 microservice 模式。
+2. attendance-service 接 XXL-JOB 每日结算和月度统计。
+3. search-service 接 Elasticsearch 索引同步和全文检索。
+4. auth-service 补 Redis Token 存储和退出失效。
 
 验收标准：
 
@@ -190,12 +194,11 @@ P0 的代码层闭环和 gateway 运行时联调已通过。P1 的 MinIO 文件�
 ## 6. 推荐执行顺序
 
 ```text
-1. RabbitMQ 消息异步化
-2. Playwright microservice 冒烟
-3. XXL-JOB 考勤结算
-4. Elasticsearch 制度文档检索
-5. Redis Token 与退出失效
-6. ai-service 独立迁移
+1. Playwright microservice 冒烟
+2. XXL-JOB 考勤结算
+3. Elasticsearch 制度文档检索
+4. Redis Token 与退出失效
+5. ai-service 独立迁移
 ```
 
 每完成一项，都需要同步更新：

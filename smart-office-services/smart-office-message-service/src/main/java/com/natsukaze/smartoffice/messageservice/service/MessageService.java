@@ -14,9 +14,12 @@ import com.natsukaze.smartoffice.messageservice.entity.MessageNotice;
 import com.natsukaze.smartoffice.messageservice.entity.MessageTodo;
 import com.natsukaze.smartoffice.messageservice.mapper.MessageNoticeMapper;
 import com.natsukaze.smartoffice.messageservice.mapper.MessageTodoMapper;
+import com.natsukaze.smartoffice.messageservice.mq.NoticeMessageProducer;
 import com.natsukaze.smartoffice.messageservice.vo.MessageNoticeVO;
 import com.natsukaze.smartoffice.messageservice.vo.MessageTodoVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.AmqpException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -24,12 +27,15 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class MessageService {
 
     private final MessageNoticeMapper noticeMapper;
 
     private final MessageTodoMapper todoMapper;
+
+    private final NoticeMessageProducer noticeMessageProducer;
 
     public PageResult<MessageNoticeVO> myMessages(Long userId, MessagePageQuery query) {
         LambdaQueryWrapper<MessageNotice> wrapper = new LambdaQueryWrapper<MessageNotice>()
@@ -111,8 +117,22 @@ public class MessageService {
         }
     }
 
-    @Transactional
     public void createNotice(NoticeCreateCommand command) {
+        if (!noticeMessageProducer.asyncEnabled()) {
+            saveNotice(command);
+            return;
+        }
+        try {
+            noticeMessageProducer.send(command);
+        } catch (AmqpException ex) {
+            log.warn("RabbitMQ notice delivery failed, fallback to synchronous save. userId={}, businessType={}, businessId={}, reason={}",
+                    command.userId(), command.businessType(), command.businessId(), ex.getMessage());
+            saveNotice(command);
+        }
+    }
+
+    @Transactional
+    public void saveNotice(NoticeCreateCommand command) {
         MessageNotice notice = new MessageNotice();
         notice.setUserId(command.userId());
         notice.setTitle(command.title());
