@@ -417,13 +417,14 @@ $env:RABBITMQ_PORT='5673'
 
 1. 已完成 gateway 登录、鉴权、身份透传和 approval/message 主链路冒烟。
 2. 已完成 file-service MinIO 上传、预览、下载和前端文件中心。
-3. 已完成 message-service RabbitMQ 审批通知异步投递、消费落库、失败同步降级和冒烟脚本。
+3. 已完成 message-service RabbitMQ 审批通知异步投递、消费落库、失败同步降级、发送重试和消费幂等。
 4. 已完成 smart-office-web microservice 模式 Playwright 冒烟，覆盖登录、页面访问、审批、消息、文件上传。
 5. 已完成 attendance-service XXL-JOB 每日考勤结算、月度统计和缺卡补记。
 6. 已完成 search-service Elasticsearch 制度文档索引同步与全文检索，并通过网关 smoke 验收。
 7. 已完成 auth-service Redis Token 存储、gateway 二次校验与退出失效，并通过网关 smoke 验收。
 8. 已完成 approval-service 高额报销二级审批、重复审批校验和数据库乐观锁防并发流转，网关 smoke 脚本已补充。
-9. 之后补消息可靠性、前端体验和 ai-service 独立增强。
-10. AI 模块最后独立迁移，且不阻塞审批、考勤、组织、消息等主流程。
+9. 已完成 attendance-service 考勤异常员工通知，并通过网关 smoke 验收重复日结幂等。
+10. 之后补前端体验和 ai-service 独立增强。
+11. AI 模块最后独立迁移，且不阻塞审批、考勤、组织、消息等主流程。
 
 更细的目标、步骤和验收命令见 [docs/project-roadmap.md](docs/project-roadmap.md) 与 [TODO.md](TODO.md)。

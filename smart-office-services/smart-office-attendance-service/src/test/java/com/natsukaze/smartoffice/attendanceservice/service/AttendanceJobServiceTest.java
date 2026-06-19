@@ -1,5 +1,7 @@
 package com.natsukaze.smartoffice.attendanceservice.service;
 
+import com.natsukaze.smartoffice.api.message.client.MessageCommandClient;
+import com.natsukaze.smartoffice.api.message.dto.NoticeCreateCommand;
 import com.natsukaze.smartoffice.api.org.client.OrgEmployeeClient;
 import com.natsukaze.smartoffice.attendanceservice.entity.AttendanceRecord;
 import com.natsukaze.smartoffice.attendanceservice.entity.AttendanceSummary;
@@ -9,6 +11,7 @@ import com.natsukaze.smartoffice.attendanceservice.mapper.AttendanceSummaryMappe
 import com.natsukaze.smartoffice.attendanceservice.vo.AttendanceJobResultVO;
 import com.natsukaze.smartoffice.common.core.Result;
 import com.natsukaze.smartoffice.common.enums.AttendanceStatus;
+import com.natsukaze.smartoffice.common.enums.BusinessType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -41,6 +44,9 @@ class AttendanceJobServiceTest {
     @Mock
     private OrgEmployeeClient orgEmployeeClient;
 
+    @Mock
+    private MessageCommandClient messageCommandClient;
+
     @InjectMocks
     private AttendanceJobService attendanceJobService;
 
@@ -52,9 +58,12 @@ class AttendanceJobServiceTest {
         when(ruleMapper.selectOne(any())).thenReturn(null);
         when(recordMapper.selectOne(any())).thenReturn(null);
         when(recordMapper.insert(any(AttendanceRecord.class))).thenAnswer(invocation -> {
-            insertedRecord.set(invocation.getArgument(0));
+            AttendanceRecord record = invocation.getArgument(0);
+            record.setId(30L);
+            insertedRecord.set(record);
             return 1;
         });
+        when(messageCommandClient.createNotice(any(NoticeCreateCommand.class))).thenReturn(Result.success());
         when(recordMapper.selectList(any())).thenAnswer(invocation -> List.of(insertedRecord.get()));
         when(summaryMapper.selectOne(any())).thenReturn(null);
 
@@ -70,6 +79,13 @@ class AttendanceJobServiceTest {
         verify(summaryMapper).insert(summaryCaptor.capture());
         assertThat(summaryCaptor.getValue().getMissingCount()).isEqualTo(2);
         assertThat(summaryCaptor.getValue().getSummaryMonth()).isEqualTo("2026-06");
+
+        ArgumentCaptor<NoticeCreateCommand> noticeCaptor = ArgumentCaptor.forClass(NoticeCreateCommand.class);
+        verify(messageCommandClient).createNotice(noticeCaptor.capture());
+        assertThat(noticeCaptor.getValue().userId()).isEqualTo(3L);
+        assertThat(noticeCaptor.getValue().businessType()).isEqualTo(BusinessType.ATTENDANCE.getCode());
+        assertThat(noticeCaptor.getValue().businessId()).isEqualTo(30L);
+        assertThat(noticeCaptor.getValue().title()).isEqualTo("Attendance abnormal");
     }
 
     @Test
@@ -83,6 +99,7 @@ class AttendanceJobServiceTest {
         when(orgEmployeeClient.listActiveUserIds()).thenReturn(Result.success(List.of(3L)));
         when(ruleMapper.selectOne(any())).thenReturn(null);
         when(recordMapper.selectOne(any())).thenReturn(existing);
+        when(messageCommandClient.createNotice(any(NoticeCreateCommand.class))).thenReturn(Result.success());
         when(recordMapper.selectList(any())).thenReturn(List.of(existing));
         when(summaryMapper.selectOne(any())).thenReturn(null);
 

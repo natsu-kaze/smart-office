@@ -9,7 +9,7 @@
 * 单体 `smart-office-server` 已作为业务基线保留，后续只做必要修复。
 * 微服务 `smart-office-services` 是主线，新增能力优先落到对应微服务。
 * 非 AI 主流程优先补齐，AI 模块最后独立迁移。
-* 当前最优先任务是收口 approval-service 审批规则和重复审批控制，并准备进入 message-service 可靠性补强。
+* 当前最优先任务是补齐 smart-office-web 制度文档检索、审批详情、考勤记录等页面体验。
 
 已完成：
 * [x] approval-service 提交审批时创建审批节点、审批待办和审批通知。
@@ -39,6 +39,10 @@
 * [x] approval-service 支持报销金额大于 1000 元时部门负责人审批后流转到财务审批。
 * [x] approval-service 通过状态校验和数据库乐观锁防止重复审批、并发审批重复流转。
 * [x] 新增 `scripts/smoke-p1-approval-rules-concurrency.ps1`，固化高额报销二级审批和重复审批拒绝链路。
+* [x] attendance-service 每日结算发现缺卡、迟到、早退等异常后通过 message-service 通知员工。
+* [x] message-service RabbitMQ 通知发送支持有限重试，重试后仍失败则同步落库降级。
+* [x] message-service 通知消费按用户、业务类型、业务 ID 和标题做幂等落库。
+* [x] 新增 `scripts/smoke-p1-attendance-message-notice.ps1`，固化考勤异常通知和重复日结幂等链路。
 
 已验证：
 * [x] `mvn -pl smart-office-services/smart-office-approval-service -am test`
@@ -56,11 +60,12 @@
 * [x] `mvn -pl smart-office-services/smart-office-auth-service,smart-office-services/smart-office-gateway -am test`
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-auth-redis-token.ps1`
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-approval-rules-concurrency.ps1`
+* [x] `mvn -pl smart-office-services/smart-office-message-service,smart-office-services/smart-office-attendance-service -am test`
+* [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-attendance-message-notice.ps1`
 
 当前下一步：
-1. message-service 补考勤异常通知、消费幂等和失败重试。
-2. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
-3. 最后迁移 ai-service，AI 不阻塞办公主流程。
+1. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
+2. 最后迁移 ai-service，AI 不阻塞办公主流程。
 
 ## 当前目标与步骤
 
@@ -75,23 +80,21 @@
 * [x] 补 search-service Elasticsearch 索引同步与全文检索。
 * [x] 补 auth-service Redis Token 存储、gateway 二次校验与退出失效。
 * [x] 补 approval-service 重复审批/并发审批控制和报销二级审批。
-* [ ] 补 message-service 考勤异常通知、消费幂等和失败重试。
+* [x] 补 message-service 考勤异常通知、消费幂等和失败重试。
 * [ ] 补 smart-office-web 制度文档检索、审批详情、考勤记录等页面。
 * [ ] 最后迁移 ai-service，AI 能力不阻塞办公主流程。
 
 推荐执行顺序：
 
-1. 审批规则 smoke 验收。
-2. 消息可靠性与考勤异常通知。
-3. 前端体验补齐。
-4. ai-service 独立迁移。
+1. 前端体验补齐。
+2. ai-service 独立迁移。
 
-当前审批规则任务验收命令：
+当前消息可靠性任务验收命令：
 
-* [x] `mvn -pl smart-office-services/smart-office-approval-service -am test`
+* [x] `mvn -pl smart-office-services/smart-office-message-service,smart-office-services/smart-office-attendance-service -am test`
 * [x] `mvn test`
 * [x] `git diff --check`
-* [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-approval-rules-concurrency.ps1`
+* [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-attendance-message-notice.ps1`
 
 下面保留详细模块清单和历史进度，后续每完成一项同步勾选。
 
@@ -332,16 +335,16 @@
 * [x] 审批通过后通知申请人
 * [x] 审批驳回后通知申请人
 * [ ] 审批超时后通知审批人
-* [ ] 考勤异常后通知员工
+* [x] 考勤异常后通知员工
 
 ### RabbitMQ
 
 * [x] 创建审批通知队列
-* [ ] 创建考勤通知队列
+* [x] 使用通知队列承载考勤异常通知
 * [x] 创建消息消费者
 * [x] 消息发送失败同步降级
-* [ ] 消息发送失败重试
-* [ ] 消费幂等处理
+* [x] 消息发送失败重试
+* [x] 消费幂等处理
 
 ## 8. 文件模块
 

@@ -133,6 +133,11 @@ public class MessageService {
 
     @Transactional
     public void saveNotice(NoticeCreateCommand command) {
+        if (noticeExists(command)) {
+            log.info("Duplicate notice ignored. userId={}, businessType={}, businessId={}, title={}",
+                    command.userId(), command.businessType(), command.businessId(), command.title());
+            return;
+        }
         MessageNotice notice = new MessageNotice();
         notice.setUserId(command.userId());
         notice.setTitle(command.title());
@@ -141,6 +146,24 @@ public class MessageService {
         notice.setBusinessId(command.businessId());
         notice.setReadStatus(0);
         noticeMapper.insert(notice);
+    }
+
+    private boolean noticeExists(NoticeCreateCommand command) {
+        LambdaQueryWrapper<MessageNotice> wrapper = new LambdaQueryWrapper<MessageNotice>()
+                .eq(MessageNotice::getUserId, command.userId())
+                .eq(MessageNotice::getTitle, command.title());
+        BusinessType businessType = BusinessType.ofNullable(command.businessType());
+        if (businessType == null) {
+            wrapper.isNull(MessageNotice::getBusinessType);
+        } else {
+            wrapper.eq(MessageNotice::getBusinessType, businessType);
+        }
+        if (command.businessId() == null) {
+            wrapper.isNull(MessageNotice::getBusinessId);
+        } else {
+            wrapper.eq(MessageNotice::getBusinessId, command.businessId());
+        }
+        return noticeMapper.selectCount(wrapper) > 0;
     }
 
     private void finishTodo(MessageTodo todo) {

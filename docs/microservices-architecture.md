@@ -111,12 +111,12 @@ gateway 负责统一入口和身份透传：
 * 前端新增消息中心，支持待办列表、通知列表、标记完成、标记已读。
 * file-service 已接入 MinIO，支持真实上传、预览 URL、服务端下载。
 * 前端新增文件中心，支持文件上传、预览、下载。
-* message-service 已接入 RabbitMQ，审批结果通知异步投递到通知队列并由消费者落库。
-* RabbitMQ 通知链路具备投递失败同步降级，避免 MQ 不可用时静默丢通知。
+* message-service 已接入 RabbitMQ，审批结果和考勤异常通知异步投递到通知队列并由消费者落库。
+* RabbitMQ 通知链路具备发送重试、投递失败同步降级和消费幂等，避免 MQ 抖动时静默丢通知或重复落库。
 * system-service 已补 `/api/system/users` 用户分页接口，前端用户管理页可通过 gateway 访问。
 * common 已补 JavaScript 安全整数序列化，避免 Snowflake Long ID 在浏览器侧精度丢失。
 * smart-office-web 已补 microservice 模式 Playwright 冒烟。
-* attendance-service 已接入 XXL-JOB 执行器，支持每日缺卡结算和月度统计任务。
+* attendance-service 已接入 XXL-JOB 执行器，支持每日缺卡结算、月度统计任务和考勤异常员工通知。
 * org-service 已补内部活跃员工 userId 列表接口，供 attendance-service 通过 Feign 获取结算对象。
 * search-service 已接入 Elasticsearch，制度文档新增、修改、删除会同步索引，带关键字检索优先走 ES，失败时降级 MySQL LIKE。
 
@@ -150,6 +150,10 @@ gateway 负责统一入口和身份透传：
   * XXL-JOB Admin 可访问。
   * 内部任务接口触发每日缺卡结算和月度统计。
   * employee 通过 gateway 查询到缺卡记录和月度 `missingCount`。
+* `scripts/smoke-p1-attendance-message-notice.ps1` 覆盖 attendance/message 网关链路：
+  * 内部任务接口触发每日缺卡结算。
+  * employee 通过 gateway 查询到 `ATTENDANCE` 考勤异常通知。
+  * 重复触发同一天日结时，考勤异常通知仍保持单条。
 * `scripts/smoke-p1-search-elasticsearch.ps1` 覆盖 search/Elasticsearch 网关链路：
   * Elasticsearch 集群健康为 `green` 或 `yellow`。
   * employee 通过 gateway 创建已发布制度文档。
@@ -201,6 +205,5 @@ npm run test:e2e:microservice
 
 ## 8. 后续顺序
 
-1. message-service 扩展考勤异常通知、消费幂等和失败重试。
-2. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
-3. ai-service 独立迁移，保持 AI 不阻塞主业务流程。
+1. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
+2. ai-service 独立迁移，保持 AI 不阻塞主业务流程。

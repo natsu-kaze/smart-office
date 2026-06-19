@@ -60,8 +60,9 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 * approval-service：审批草稿、提交、通过、驳回、撤回、关闭、审批节点和记录。
   * 报销金额大于 1000 元时，支持部门负责人审批后继续流转到财务审批。
   * 审批关键状态变更使用数据库乐观锁，重复审批或并发更新会返回明确业务错误。
-* message-service：待办、通知、RabbitMQ 异步通知、发送失败同步降级。
+* message-service：待办、通知、RabbitMQ 异步通知、发送失败同步降级、发送重试、消费幂等。
 * attendance-service：考勤规则、打卡、记录、月度统计、XXL-JOB 每日结算和月度统计任务。
+  * 每日结算发现缺卡、迟到、早退等异常后，会通过 message-service 通知员工。
 * file-service：MinIO 上传、下载、预览 URL、文件记录。
 * search-service：制度文档 CRUD、MySQL 模糊检索、Elasticsearch 索引同步和全文检索。
 * smart-office-web：登录、工作台、用户、组织、审批、消息、文件、今日考勤基础页面。
@@ -75,6 +76,7 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 * `scripts/smoke-p1-search-elasticsearch.ps1`：制度文档和 Elasticsearch 链路。
 * `scripts/smoke-p1-auth-redis-token.ps1`：登录、当前用户、退出和旧 token 拒绝链路。
 * `scripts/smoke-p1-approval-rules-concurrency.ps1`：高额报销二级审批和重复审批拒绝链路。
+* `scripts/smoke-p1-attendance-message-notice.ps1`：考勤异常通知和重复日结幂等链路。
 * `smart-office-web` 的 `npm run test:e2e:microservice`：前端 microservice 模式 Playwright 冒烟。
 
 ## 4. 当前目标
@@ -83,9 +85,8 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 
 优先级：
 
-1. message-service 扩展考勤异常通知、消费幂等和失败重试。
-2. 前端补制度文档检索、审批详情、考勤记录等页面，并扩展 Playwright 冒烟。
-3. ai-service 独立迁移，接 Spring AI 和制度问答。
+1. 前端补制度文档检索、审批详情、考勤记录等页面，并扩展 Playwright 冒烟。
+2. ai-service 独立迁移，接 Spring AI 和制度问答。
 
 ## 5. 实施步骤
 
@@ -144,7 +145,22 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 * `[x] 单元测试覆盖重复审批和高额报销二级审批核心场景。`
 * `[x] scripts/smoke-p1-approval-rules-concurrency.ps1`
 
-### Step 4：前端体验补齐
+### Step 4：消息可靠性与考勤异常通知
+
+已实现：
+
+* attendance-service 每日结算发现缺卡、迟到、早退等异常后，通过 message-service 发送 `ATTENDANCE` 通知。
+* message-service RabbitMQ 通知发送支持有限重试，重试后仍失败则同步落库降级。
+* message-service 通知消费按用户、业务类型、业务 ID 和标题做幂等落库，避免 MQ 重投或重复命令生成重复消息。
+* 已新增 smoke 脚本，覆盖日结生成缺卡记录、员工收到考勤异常通知、重复日结通知仍保持单条。
+
+验收：
+
+* `[x] mvn -pl smart-office-services/smart-office-message-service,smart-office-services/smart-office-attendance-service -am test`
+* `[x] mvn test`
+* `[x] scripts/smoke-p1-attendance-message-notice.ps1`
+
+### Step 5：前端体验补齐
 
 要做：
 
@@ -159,7 +175,7 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 * 页面能完整演示登录、审批、消息、文件、考勤、制度搜索。
 * `npm run build` 和 `npm run test:e2e:microservice` 通过。
 
-### Step 5：AI 独立增强
+### Step 6：AI 独立增强
 
 要做：
 

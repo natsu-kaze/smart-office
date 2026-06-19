@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.AmqpException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -80,6 +81,16 @@ class MessageServiceTest {
         assertThat(notice.getUserId()).isEqualTo(1001L);
         assertThat(notice.getBusinessType()).isEqualTo(BusinessType.APPROVAL);
         assertThat(notice.getBusinessId()).isEqualTo(2002L);
+    }
+
+    @Test
+    void saveNoticeIgnoresDuplicateBusinessNotice() {
+        NoticeCreateCommand command = noticeCommand();
+        when(noticeMapper.selectCount(any())).thenReturn(1L);
+
+        messageService.saveNotice(command);
+
+        verify(noticeMapper, never()).insert(any(MessageNotice.class));
     }
 
     private MessageNotice captureInsertedNotice() {

@@ -16,4 +16,8 @@ public class MessageMqProperties {
     private String noticeQueue = "smart-office.message.notice.queue";
 
     private String noticeRoutingKey = "notice.created";
+
+    private int noticeSendMaxAttempts = 3;
+
+    private long noticeSendRetryIntervalMillis = 200;
 }

@@ -1,6 +1,8 @@
 package com.natsukaze.smartoffice.attendanceservice.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.natsukaze.smartoffice.api.message.client.MessageCommandClient;
+import com.natsukaze.smartoffice.api.message.dto.NoticeCreateCommand;
 import com.natsukaze.smartoffice.api.org.client.OrgEmployeeClient;
 import com.natsukaze.smartoffice.attendanceservice.entity.AttendanceRecord;
 import com.natsukaze.smartoffice.attendanceservice.entity.AttendanceRule;
@@ -12,8 +14,10 @@ import com.natsukaze.smartoffice.attendanceservice.vo.AttendanceJobResultVO;
 import com.natsukaze.smartoffice.common.core.ErrorCode;
 import com.natsukaze.smartoffice.common.core.Result;
 import com.natsukaze.smartoffice.common.enums.AttendanceStatus;
+import com.natsukaze.smartoffice.common.enums.BusinessType;
 import com.natsukaze.smartoffice.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +28,7 @@ import java.time.YearMonth;
 import java.util.List;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class AttendanceJobService {
 
@@ -34,6 +39,8 @@ public class AttendanceJobService {
     private final AttendanceSummaryMapper summaryMapper;
 
     private final OrgEmployeeClient orgEmployeeClient;
+
+    private final MessageCommandClient messageCommandClient;
 
     @Transactional
     public AttendanceJobResultVO settleDaily(LocalDate date) {
@@ -54,11 +61,13 @@ public class AttendanceJobService {
                 record.setCheckOutStatus(AttendanceStatus.MISSING);
                 record.setRemark("Daily settlement: missing check-in and check-out");
                 recordMapper.insert(record);
+                notifyAttendanceAbnormal(record);
                 inserted++;
                 continue;
             }
             if (completeRecordStatus(record, rule)) {
                 recordMapper.updateById(record);
+                notifyAttendanceAbnormal(record);
                 updated++;
             }
         }
@@ -184,6 +193,49 @@ public class AttendanceJobService {
             count++;
         }
         return count;
+    }
+
+    private void notifyAttendanceAbnormal(AttendanceRecord record) {
+        if (!hasAbnormalStatus(record)) {
+            return;
+        }
+        try {
+            Result<Void> result = messageCommandClient.createNotice(new NoticeCreateCommand(
+                    record.getUserId(),
+                    "Attendance abnormal",
+                    buildAbnormalNoticeContent(record),
+                    BusinessType.ATTENDANCE.getCode(),
+                    record.getId()
+            ));
+            if (result == null || result.code() != ErrorCode.SUCCESS.getCode()) {
+                log.warn("Attendance abnormal notice failed. userId={}, recordId={}, result={}",
+                        record.getUserId(), record.getId(), result);
+            }
+        } catch (RuntimeException ex) {
+            log.warn("Attendance abnormal notice failed. userId={}, recordId={}, reason={}",
+                    record.getUserId(), record.getId(), ex.getMessage());
+        }
+    }
+
+    private boolean hasAbnormalStatus(AttendanceRecord record) {
+        return isAbnormalStatus(record.getCheckInStatus()) || isAbnormalStatus(record.getCheckOutStatus());
+    }
+
+    private boolean isAbnormalStatus(AttendanceStatus status) {
+        return status == AttendanceStatus.LATE
+                || status == AttendanceStatus.EARLY_LEAVE
+                || status == AttendanceStatus.MISSING
+                || status == AttendanceStatus.ABNORMAL;
+    }
+
+    private String buildAbnormalNoticeContent(AttendanceRecord record) {
+        return "Attendance abnormal on " + record.getAttendanceDate()
+                + ": check-in=" + statusCode(record.getCheckInStatus())
+                + ", check-out=" + statusCode(record.getCheckOutStatus());
+    }
+
+    private String statusCode(AttendanceStatus status) {
+        return status == null ? "UNKNOWN" : status.getCode();
     }
 
     private List<Long> activeUserIds() {
