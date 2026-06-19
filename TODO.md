@@ -9,7 +9,7 @@
 * 单体 `smart-office-server` 已作为业务基线保留，后续只做必要修复。
 * 微服务 `smart-office-services` 是主线，新增能力优先落到对应微服务。
 * 非 AI 主流程优先补齐，AI 模块最后独立迁移。
-* 当前最优先任务是 search-service 接 Elasticsearch，完成制度文档索引同步与全文检索。
+* 当前最优先任务是收口 approval-service 审批规则和重复审批控制，并准备进入 message-service 可靠性补强。
 
 已完成：
 * [x] approval-service 提交审批时创建审批节点、审批待办和审批通知。
@@ -36,6 +36,9 @@
 * [x] 新增 `scripts/smoke-p1-search-elasticsearch.ps1`，固化制度文档 ES 网关冒烟链路。
 * [x] auth-service 接入 Redis Token 存储，gateway 完成 Redis 二次校验，退出登录后旧 token 立即失效。
 * [x] 新增 `scripts/smoke-p1-auth-redis-token.ps1`，固化登录、当前用户、退出、旧 token 拒绝链路。
+* [x] approval-service 支持报销金额大于 1000 元时部门负责人审批后流转到财务审批。
+* [x] approval-service 通过状态校验和数据库乐观锁防止重复审批、并发审批重复流转。
+* [x] 新增 `scripts/smoke-p1-approval-rules-concurrency.ps1`，固化高额报销二级审批和重复审批拒绝链路。
 
 已验证：
 * [x] `mvn -pl smart-office-services/smart-office-approval-service -am test`
@@ -52,12 +55,12 @@
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-search-elasticsearch.ps1`
 * [x] `mvn -pl smart-office-services/smart-office-auth-service,smart-office-services/smart-office-gateway -am test`
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-auth-redis-token.ps1`
+* [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-approval-rules-concurrency.ps1`
 
 当前下一步：
-1. approval-service 补重复审批/并发审批控制和报销二级审批。
-2. message-service 补考勤异常通知、消费幂等和失败重试。
-3. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
-4. 最后迁移 ai-service，AI 不阻塞办公主流程。
+1. message-service 补考勤异常通知、消费幂等和失败重试。
+2. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
+3. 最后迁移 ai-service，AI 不阻塞办公主流程。
 
 ## 当前目标与步骤
 
@@ -71,24 +74,24 @@
 * [x] 补 attendance-service XXL-JOB 考勤结算与月度统计。
 * [x] 补 search-service Elasticsearch 索引同步与全文检索。
 * [x] 补 auth-service Redis Token 存储、gateway 二次校验与退出失效。
-* [ ] 补 approval-service 重复审批/并发审批控制和报销二级审批。
+* [x] 补 approval-service 重复审批/并发审批控制和报销二级审批。
 * [ ] 补 message-service 考勤异常通知、消费幂等和失败重试。
 * [ ] 补 smart-office-web 制度文档检索、审批详情、考勤记录等页面。
 * [ ] 最后迁移 ai-service，AI 能力不阻塞办公主流程。
 
 推荐执行顺序：
 
-1. 审批并发与规则补强。
+1. 审批规则 smoke 验收。
 2. 消息可靠性与考勤异常通知。
 3. 前端体验补齐。
 4. ai-service 独立迁移。
 
-当前 Elasticsearch 任务验收命令：
+当前审批规则任务验收命令：
 
-* [x] `mvn -pl smart-office-services/smart-office-search-service -am test`
+* [x] `mvn -pl smart-office-services/smart-office-approval-service -am test`
 * [x] `mvn test`
 * [x] `git diff --check`
-* [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-search-elasticsearch.ps1`
+* [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-approval-rules-concurrency.ps1`
 
 下面保留详细模块清单和历史进度，后续每完成一项同步勾选。
 
@@ -263,15 +266,15 @@
 * [x] 请假审批默认部门负责人审批
 * [x] 加班审批默认部门负责人审批
 * [x] 报销金额小于等于 1000 元，部门负责人审批
-* [ ] 报销金额大于 1000 元，部门负责人 + 财务审批
+* [x] 报销金额大于 1000 元，部门负责人 + 财务审批
 * [x] 审批人不存在时给出明确错误提示
 * [x] 审批状态变更合法性校验
-* [ ] 重复审批校验
+* [x] 重复审批校验
 * [x] 非审批人不能审批校验
 
 ### 并发控制
 
-* [ ] 使用数据库乐观锁防止重复审批
+* [x] 使用数据库乐观锁防止重复审批
 * [ ] 使用 Redisson 防止并发审批
 * [x] 审批操作记录完整日志
 
@@ -555,9 +558,9 @@ finance / 123456
 
 ## 14. 简历亮点准备
 
-* [ ] 整理审批状态机设计
-* [ ] 整理审批人计算规则
-* [ ] 整理重复审批并发控制方案
+* [x] 整理审批状态机设计
+* [x] 整理审批人计算规则
+* [x] 整理重复审批并发控制方案
 * [ ] 整理 RabbitMQ 异步通知方案
 * [ ] 整理 XXL-JOB 考勤结算方案
 * [ ] 整理 Redis 缓存设计

@@ -27,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -42,6 +43,7 @@ class ApprovalServiceTest {
     private static final long FORM_ID = 100L;
     private static final long APPLICANT_ID = 3L;
     private static final long APPROVER_ID = 2L;
+    private static final long FINANCE_ID = 4L;
 
     @Mock
     private ApprovalFormMapper formMapper;
@@ -78,6 +80,7 @@ class ApprovalServiceTest {
     void submitCreatesApprovalProcessTodoAndNotice() {
         ApprovalForm form = draftForm();
         when(formMapper.selectById(FORM_ID)).thenReturn(form);
+        when(formMapper.updateById(form)).thenReturn(1);
         stubApplicantEmployee();
         stubDetailLookups(true);
         when(messageCommandClient.createTodo(any(TodoCreateCommand.class))).thenReturn(Result.success());
@@ -112,6 +115,7 @@ class ApprovalServiceTest {
         ApprovalForm form = pendingForm();
         ApprovalProcess process = pendingProcess();
         when(formMapper.selectById(FORM_ID)).thenReturn(form);
+        when(formMapper.updateById(form)).thenReturn(1);
         stubApplicantEmployee();
         stubDetailLookups(false);
         when(processMapper.selectOne(any(Wrapper.class))).thenReturn(process);
@@ -142,6 +146,7 @@ class ApprovalServiceTest {
     void submitFailsWhenMessageServiceRejectsTodoCommand() {
         ApprovalForm form = draftForm();
         when(formMapper.selectById(FORM_ID)).thenReturn(form);
+        when(formMapper.updateById(form)).thenReturn(1);
         stubApplicantEmployee();
         when(messageCommandClient.createTodo(any(TodoCreateCommand.class)))
                 .thenReturn(Result.fail(500, "message unavailable"));
@@ -151,6 +156,53 @@ class ApprovalServiceTest {
                 .hasMessage("create approval todo failed");
 
         verify(messageCommandClient, never()).createNotice(any(NoticeCreateCommand.class));
+    }
+
+    @Test
+    void highExpenseApprovalMovesFromLeaderToFinance() {
+        ApprovalForm form = highExpensePendingForm();
+        ApprovalProcess process = pendingProcess();
+        when(formMapper.selectById(FORM_ID)).thenReturn(form);
+        when(formMapper.updateById(form)).thenReturn(1);
+        when(systemUserClient.getFirstUserByRole("FINANCE"))
+                .thenReturn(Result.success(new CurrentUserDTO(FINANCE_ID, "finance", "Finance", 4L, 2L)));
+        stubApplicantEmployee();
+        stubDetailLookupsWithFinance();
+        when(processMapper.selectOne(any(Wrapper.class))).thenReturn(process);
+        when(messageCommandClient.completeTodo(APPROVER_ID, BusinessType.APPROVAL.getCode(), FORM_ID))
+                .thenReturn(Result.success());
+        when(messageCommandClient.createTodo(any(TodoCreateCommand.class))).thenReturn(Result.success());
+        when(messageCommandClient.createNotice(any(NoticeCreateCommand.class))).thenReturn(Result.success());
+
+        approvalService.approve(APPROVER_ID, FORM_ID, nullComment());
+
+        assertThat(form.getStatus()).isEqualTo(ApprovalStatus.PROCESSING);
+        assertThat(form.getCurrentApproverId()).isEqualTo(FINANCE_ID);
+        assertThat(form.getCompletedAt()).isNull();
+
+        ArgumentCaptor<ApprovalProcess> processCaptor = ArgumentCaptor.forClass(ApprovalProcess.class);
+        verify(processMapper).insert(processCaptor.capture());
+        assertThat(processCaptor.getValue().getApproverUserId()).isEqualTo(FINANCE_ID);
+        assertThat(processCaptor.getValue().getStepOrder()).isEqualTo(2);
+
+        ArgumentCaptor<TodoCreateCommand> todoCaptor = ArgumentCaptor.forClass(TodoCreateCommand.class);
+        verify(messageCommandClient).createTodo(todoCaptor.capture());
+        assertThat(todoCaptor.getValue().userId()).isEqualTo(FINANCE_ID);
+    }
+
+    @Test
+    void approveFailsFastWhenOptimisticLockRejectsUpdate() {
+        ApprovalForm form = pendingForm();
+        when(formMapper.selectById(FORM_ID)).thenReturn(form);
+        when(formMapper.updateById(form)).thenReturn(0);
+
+        assertThatThrownBy(() -> approvalService.approve(APPROVER_ID, FORM_ID, nullComment()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("approval form was updated by another operation");
+
+        verify(messageCommandClient, never()).completeTodo(any(), any(), any());
+        verify(messageCommandClient, never()).createNotice(any(NoticeCreateCommand.class));
+        verify(processMapper, never()).updateById(any(ApprovalProcess.class));
     }
 
     private ApprovalForm draftForm() {
@@ -168,6 +220,13 @@ class ApprovalServiceTest {
         ApprovalForm form = draftForm();
         form.setStatus(ApprovalStatus.PENDING);
         form.setCurrentApproverId(APPROVER_ID);
+        return form;
+    }
+
+    private ApprovalForm highExpensePendingForm() {
+        ApprovalForm form = pendingForm();
+        form.setApprovalType(ApprovalType.EXPENSE);
+        form.setAmount(BigDecimal.valueOf(1200));
         return form;
     }
 
@@ -193,6 +252,14 @@ class ApprovalServiceTest {
             when(systemUserClient.getById(APPROVER_ID))
                     .thenReturn(Result.success(new CurrentUserDTO(APPROVER_ID, "manager", "Department Manager", 2L, 2L)));
         }
+    }
+
+    private void stubDetailLookupsWithFinance() {
+        when(recordMapper.selectList(any(Wrapper.class))).thenReturn(List.of());
+        when(systemUserClient.getById(APPLICANT_ID))
+                .thenReturn(Result.success(new CurrentUserDTO(APPLICANT_ID, "employee", "Employee", 3L, 2L)));
+        when(systemUserClient.getById(FINANCE_ID))
+                .thenReturn(Result.success(new CurrentUserDTO(FINANCE_ID, "finance", "Finance", 4L, 2L)));
     }
 
     private com.natsukaze.smartoffice.approvalservice.dto.ApprovalActionRequest nullComment() {

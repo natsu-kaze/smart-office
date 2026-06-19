@@ -103,6 +103,8 @@ gateway 负责统一入口和身份透传：
 * approval/message 代码层主链路：
   * 提交审批创建审批节点、待办和通知。
   * 审批通过、驳回、撤回、关闭完成待办并更新审批节点。
+  * 报销金额大于 1000 元时，部门负责人审批后继续生成财务审批节点和待办。
+  * 审批单关键状态变更使用数据库乐观锁，重复审批或并发更新会返回业务错误。
   * message-service 命令失败时 approval-service 抛出业务异常。
   * `approval_form.content` 已从 `JSON` 调整为 `TEXT`，支持普通表单文本内容。
 * 前端审批中心支持保存草稿、保存并提交、提交草稿、通过、驳回。
@@ -157,6 +159,11 @@ gateway 负责统一入口和身份透传：
   * employee 通过 gateway 登录并访问 `/api/auth/me`。
   * employee 调用 `/api/auth/logout` 删除 Redis token。
   * 旧 token 再访问 gateway 返回 `401`。
+* `scripts/smoke-p1-approval-rules-concurrency.ps1` 覆盖 approval 规则和重复审批链路：
+  * employee 创建并提交高额报销审批。
+  * manager 审批后审批单进入 `PROCESSING`，并生成 finance 财务待办。
+  * manager 重复审批同一审批单会被拒绝。
+  * finance 审批后审批单最终变为 `APPROVED`。
 
 ## 7. 推荐启动顺序
 
@@ -194,7 +201,6 @@ npm run test:e2e:microservice
 
 ## 8. 后续顺序
 
-1. approval-service 补重复审批、并发审批控制和报销二级审批。
-2. message-service 扩展考勤异常通知、消费幂等和失败重试。
-3. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
-4. ai-service 独立迁移，保持 AI 不阻塞主业务流程。
+1. message-service 扩展考勤异常通知、消费幂等和失败重试。
+2. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
+3. ai-service 独立迁移，保持 AI 不阻塞主业务流程。

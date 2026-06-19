@@ -89,9 +89,9 @@ public class ApprovalService {
         form.setStatus(ApprovalStatus.PENDING);
         form.setCurrentApproverId(approverId);
         form.setSubmittedAt(LocalDateTime.now());
-        formMapper.updateById(form);
+        updateFormOrThrow(form);
         addRecord(id, ApprovalAction.SUBMIT, userId, fromStatus, ApprovalStatus.PENDING, "submit approval");
-        createProcess(form.getId(), approverId);
+        createProcess(form.getId(), approverId, 1);
         createTodo(approverId, form);
         return detail(id);
     }
@@ -100,14 +100,26 @@ public class ApprovalService {
     public ApprovalFormVO approve(Long userId, Long id, ApprovalActionRequest request) {
         ApprovalForm form = requireForm(id);
         ensureApprover(form, userId);
-        form.setStatus(ApprovalStatus.APPROVED);
-        form.setCurrentApproverId(null);
-        form.setCompletedAt(LocalDateTime.now());
-        formMapper.updateById(form);
+        ApprovalStatus fromStatus = form.getStatus();
+        Long nextApproverId = calculateNextApprover(form, userId);
+        if (nextApproverId == null) {
+            form.setStatus(ApprovalStatus.APPROVED);
+            form.setCurrentApproverId(null);
+            form.setCompletedAt(LocalDateTime.now());
+        } else {
+            form.setStatus(ApprovalStatus.PROCESSING);
+            form.setCurrentApproverId(nextApproverId);
+        }
+        updateFormOrThrow(form);
         completeTodo(userId, form.getId());
         finishCurrentProcess(form.getId(), userId, ApprovalStatus.APPROVED, request.getComment());
-        addRecord(id, ApprovalAction.APPROVE, userId, ApprovalStatus.PENDING, ApprovalStatus.APPROVED, request.getComment());
-        notifyUser(form.getApplicantUserId(), "Approval passed", form.getTitle() + " has been approved", form.getId());
+        addRecord(id, ApprovalAction.APPROVE, userId, fromStatus, form.getStatus(), request.getComment());
+        if (nextApproverId == null) {
+            notifyUser(form.getApplicantUserId(), "Approval passed", form.getTitle() + " has been approved", form.getId());
+        } else {
+            createProcess(form.getId(), nextApproverId, 2);
+            createTodo(nextApproverId, form);
+        }
         return detail(id);
     }
 
@@ -115,13 +127,14 @@ public class ApprovalService {
     public ApprovalFormVO reject(Long userId, Long id, ApprovalActionRequest request) {
         ApprovalForm form = requireForm(id);
         ensureApprover(form, userId);
+        ApprovalStatus fromStatus = form.getStatus();
         form.setStatus(ApprovalStatus.REJECTED);
         form.setCurrentApproverId(null);
         form.setCompletedAt(LocalDateTime.now());
-        formMapper.updateById(form);
+        updateFormOrThrow(form);
         completeTodo(userId, form.getId());
         finishCurrentProcess(form.getId(), userId, ApprovalStatus.REJECTED, request.getComment());
-        addRecord(id, ApprovalAction.REJECT, userId, ApprovalStatus.PENDING, ApprovalStatus.REJECTED, request.getComment());
+        addRecord(id, ApprovalAction.REJECT, userId, fromStatus, ApprovalStatus.REJECTED, request.getComment());
         notifyUser(form.getApplicantUserId(), "Approval rejected", form.getTitle() + " has been rejected", form.getId());
         return detail(id);
     }
@@ -130,18 +143,19 @@ public class ApprovalService {
     public ApprovalFormVO withdraw(Long userId, Long id, ApprovalActionRequest request) {
         ApprovalForm form = requireForm(id);
         ensureApplicant(form, userId);
-        if (form.getStatus() != ApprovalStatus.PENDING) {
+        if (!isActiveApproval(form.getStatus())) {
             throw new BusinessException("only pending form can be withdrawn");
         }
+        ApprovalStatus fromStatus = form.getStatus();
         Long approverId = form.getCurrentApproverId();
         form.setStatus(ApprovalStatus.WITHDRAWN);
         form.setCurrentApproverId(null);
-        formMapper.updateById(form);
+        updateFormOrThrow(form);
         if (approverId != null) {
             completeTodo(approverId, form.getId());
             finishCurrentProcess(form.getId(), approverId, ApprovalStatus.WITHDRAWN, request.getComment());
         }
-        addRecord(id, ApprovalAction.WITHDRAW, userId, ApprovalStatus.PENDING, ApprovalStatus.WITHDRAWN, request.getComment());
+        addRecord(id, ApprovalAction.WITHDRAW, userId, fromStatus, ApprovalStatus.WITHDRAWN, request.getComment());
         return detail(id);
     }
 
@@ -157,8 +171,8 @@ public class ApprovalService {
         form.setStatus(ApprovalStatus.CLOSED);
         form.setCurrentApproverId(null);
         form.setCompletedAt(LocalDateTime.now());
-        formMapper.updateById(form);
-        if (fromStatus == ApprovalStatus.PENDING && approverId != null) {
+        updateFormOrThrow(form);
+        if (isActiveApproval(fromStatus) && approverId != null) {
             completeTodo(approverId, form.getId());
             finishCurrentProcess(form.getId(), approverId, ApprovalStatus.CLOSED, request.getComment());
         }
@@ -184,7 +198,7 @@ public class ApprovalService {
     public PageResult<ApprovalFormVO> myTodos(Long userId, ApprovalPageQuery query) {
         LambdaQueryWrapper<ApprovalForm> wrapper = baseQuery(query)
                 .eq(ApprovalForm::getCurrentApproverId, userId)
-                .eq(ApprovalForm::getStatus, ApprovalStatus.PENDING)
+                .in(ApprovalForm::getStatus, ApprovalStatus.PENDING, ApprovalStatus.PROCESSING)
                 .orderByDesc(ApprovalForm::getSubmittedAt);
         Page<ApprovalForm> page = formMapper.selectPage(new Page<>(query.getCurrent(), query.getSize()), wrapper);
         return PageResult.from(page.convert(this::toVO));
@@ -221,20 +235,31 @@ public class ApprovalService {
     private Long calculateFirstApprover(ApprovalForm form) {
         OrgEmployeeDTO employee = requireEmployee(form.getApplicantUserId());
         Long leaderId = employee.departmentLeaderUserId();
-        if (form.getApprovalType() == ApprovalType.EXPENSE
-                && form.getAmount() != null
-                && form.getAmount().compareTo(BigDecimal.valueOf(1000)) > 0) {
-            CurrentUserDTO financeUser = firstUserByRole(FINANCE_ROLE);
-            Long financeId = financeUser == null ? null : financeUser.userId();
-            if (leaderId == null && financeId == null) {
-                throw new BusinessException("approval approver not found");
-            }
-            return leaderId == null ? financeId : leaderId;
-        }
         if (leaderId == null) {
             throw new BusinessException("department leader not found");
         }
+        if (needsFinanceApproval(form) && firstUserByRole(FINANCE_ROLE) == null) {
+            throw new BusinessException("finance approver not found");
+        }
         return leaderId;
+    }
+
+    private Long calculateNextApprover(ApprovalForm form, Long currentApproverId) {
+        if (!needsFinanceApproval(form)) {
+            return null;
+        }
+        CurrentUserDTO financeUser = firstUserByRole(FINANCE_ROLE);
+        Long financeId = financeUser == null ? null : financeUser.userId();
+        if (financeId == null) {
+            throw new BusinessException("finance approver not found");
+        }
+        return financeId.equals(currentApproverId) ? null : financeId;
+    }
+
+    private boolean needsFinanceApproval(ApprovalForm form) {
+        return form.getApprovalType() == ApprovalType.EXPENSE
+                && form.getAmount() != null
+                && form.getAmount().compareTo(BigDecimal.valueOf(1000)) > 0;
     }
 
     private void createTodo(Long userId, ApprovalForm form) {
@@ -261,11 +286,11 @@ public class ApprovalService {
                 formId)), "create approval notice failed");
     }
 
-    private void createProcess(Long formId, Long approverId) {
+    private void createProcess(Long formId, Long approverId, int stepOrder) {
         ApprovalProcess process = new ApprovalProcess();
         process.setFormId(formId);
         process.setApproverUserId(approverId);
-        process.setStepOrder(1);
+        process.setStepOrder(stepOrder);
         process.setStatus(ApprovalStatus.PENDING);
         processMapper.insert(process);
     }
@@ -317,12 +342,22 @@ public class ApprovalService {
     }
 
     private void ensureApprover(ApprovalForm form, Long userId) {
-        if (form.getStatus() != ApprovalStatus.PENDING) {
+        if (!isActiveApproval(form.getStatus())) {
             throw new BusinessException("approval form is not pending");
         }
         if (!userId.equals(form.getCurrentApproverId())) {
             throw new BusinessException("current user is not approver");
         }
+    }
+
+    private void updateFormOrThrow(ApprovalForm form) {
+        if (formMapper.updateById(form) != 1) {
+            throw new BusinessException("approval form was updated by another operation");
+        }
+    }
+
+    private boolean isActiveApproval(ApprovalStatus status) {
+        return status == ApprovalStatus.PENDING || status == ApprovalStatus.PROCESSING;
     }
 
     private ApprovalFormVO toVO(ApprovalForm form) {

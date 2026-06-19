@@ -403,7 +403,7 @@ $env:RABBITMQ_PORT='5673'
 
 * 基于 RBAC 实现企业内部权限控制。
 * 基于状态机思想实现审批流程流转。
-* 使用 Redis / Redisson 解决重复审批、重复打卡等并发问题。
+* 使用数据库乐观锁、Redis / Redisson 思路解决重复审批、重复打卡等并发问题。
 * 使用 RabbitMQ 异步处理审批通知和考勤异常通知。
 * 使用 XXL-JOB 实现每日考勤结算和审批超时扫描。
 * 使用 Elasticsearch 实现制度文档、员工和审批单搜索。
@@ -422,7 +422,8 @@ $env:RABBITMQ_PORT='5673'
 5. 已完成 attendance-service XXL-JOB 每日考勤结算、月度统计和缺卡补记。
 6. 已完成 search-service Elasticsearch 制度文档索引同步与全文检索，并通过网关 smoke 验收。
 7. 已完成 auth-service Redis Token 存储、gateway 二次校验与退出失效，并通过网关 smoke 验收。
-8. 之后补审批并发控制、消息可靠性、前端体验和 ai-service 独立增强。
-9. AI 模块最后独立迁移，且不阻塞审批、考勤、组织、消息等主流程。
+8. 已完成 approval-service 高额报销二级审批、重复审批校验和数据库乐观锁防并发流转，网关 smoke 脚本已补充。
+9. 之后补消息可靠性、前端体验和 ai-service 独立增强。
+10. AI 模块最后独立迁移，且不阻塞审批、考勤、组织、消息等主流程。
 
 更细的目标、步骤和验收命令见 [docs/project-roadmap.md](docs/project-roadmap.md) 与 [TODO.md](TODO.md)。

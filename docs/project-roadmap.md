@@ -58,6 +58,8 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 * system-service：用户认证、用户分页、角色和用户角色基础能力。
 * org-service：公司、部门、岗位、员工、部门负责人、内部活跃用户列表。
 * approval-service：审批草稿、提交、通过、驳回、撤回、关闭、审批节点和记录。
+  * 报销金额大于 1000 元时，支持部门负责人审批后继续流转到财务审批。
+  * 审批关键状态变更使用数据库乐观锁，重复审批或并发更新会返回明确业务错误。
 * message-service：待办、通知、RabbitMQ 异步通知、发送失败同步降级。
 * attendance-service：考勤规则、打卡、记录、月度统计、XXL-JOB 每日结算和月度统计任务。
 * file-service：MinIO 上传、下载、预览 URL、文件记录。
@@ -72,18 +74,18 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 * `scripts/smoke-p1-attendance-xxl-job.ps1`：考勤和 XXL-JOB 链路。
 * `scripts/smoke-p1-search-elasticsearch.ps1`：制度文档和 Elasticsearch 链路。
 * `scripts/smoke-p1-auth-redis-token.ps1`：登录、当前用户、退出和旧 token 拒绝链路。
+* `scripts/smoke-p1-approval-rules-concurrency.ps1`：高额报销二级审批和重复审批拒绝链路。
 * `smart-office-web` 的 `npm run test:e2e:microservice`：前端 microservice 模式 Playwright 冒烟。
 
 ## 4. 当前目标
 
-当前阶段目标是补齐非 AI 中间件能力，并把每个能力都落到真实业务链路里。
+当前阶段目标是补齐非 AI 主流程的可靠性和前端体验，并把每个能力都落到真实业务链路里。
 
 优先级：
 
-1. approval-service 接入 Redisson 或乐观锁增强，处理重复审批和并发审批。
-2. message-service 扩展考勤异常通知、消费幂等和失败重试。
-3. 前端补制度文档检索、审批详情、考勤记录等页面，并扩展 Playwright 冒烟。
-4. ai-service 独立迁移，接 Spring AI 和制度问答。
+1. message-service 扩展考勤异常通知、消费幂等和失败重试。
+2. 前端补制度文档检索、审批详情、考勤记录等页面，并扩展 Playwright 冒烟。
+3. ai-service 独立迁移，接 Spring AI 和制度问答。
 
 ## 5. 实施步骤
 
@@ -123,18 +125,24 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 
 ### Step 3：审批并发与规则补强
 
-要做：
+已实现：
 
-* 补重复审批校验。
-* 给审批单关键状态变更增加乐观锁或 Redisson 锁。
+* 审批通过、驳回、撤回、关闭等关键状态变更接入数据库乐观锁。
+* 重复审批、非当前审批人审批、已处理审批再次处理会返回明确业务错误。
 * 报销金额大于 1000 元时支持部门负责人加财务审批。
+* 高额报销审批通过后，会先进入 `PROCESSING` 状态并生成财务待办，财务审批后才变为 `APPROVED`。
+
+待补：
+
 * 补审批超时扫描任务和通知。
+* 视后续压测结果决定是否再引入 Redisson 分布式锁。
 
 验收：
 
-* 重复点击审批不会重复流转。
-* 非审批人、已处理审批、状态不合法时都有明确业务错误。
-* 单元测试覆盖并发或重复审批核心场景。
+* `[x] 重复点击审批不会重复流转。`
+* `[x] 非审批人、已处理审批、状态不合法时都有明确业务错误。`
+* `[x] 单元测试覆盖重复审批和高额报销二级审批核心场景。`
+* `[x] scripts/smoke-p1-approval-rules-concurrency.ps1`
 
 ### Step 4：前端体验补齐
 
@@ -217,10 +225,10 @@ git diff --check
 mvn test
 ```
 
-单服务变更优先加一条局部测试：
+单服务变更优先加一条局部测试，例如：
 
 ```powershell
-mvn -pl smart-office-services/smart-office-search-service -am test
+mvn -pl smart-office-services/smart-office-approval-service -am test
 ```
 
 涉及前端时：
