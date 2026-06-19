@@ -4,7 +4,7 @@
 
 本项目是一个面向企业内部协同办公场景的审批与考勤管理系统，参考钉钉、飞书、企业微信等办公平台中的审批、考勤、组织架构和待办通知能力，设计并实现员工管理、部门管理、角色权限、请假/加班/报销审批、考勤打卡、消息待办、文件附件、制度文档检索与 AI 办公助手等功能。
 
-项目采用后端优先的开发方式，当前已进入 Spring Cloud Alibaba 微服务联调阶段。`smart-office-server` 保留为单体业务基线，`smart-office-services` 作为后续主线，已完成 gateway、auth、system、org、approval、message、attendance、file、search 等核心服务迁移，AI 服务暂作独立增强能力保留占位。
+项目采用后端优先的开发方式，当前处于 Spring Cloud Alibaba 微服务主流程收尾和 AI 独立增强准备阶段。`smart-office-server` 保留为单体业务基线，`smart-office-services` 作为后续主线，已完成 gateway、auth、system、org、approval、message、attendance、file、search 等核心服务迁移，AI 服务暂作独立增强能力保留占位。
 
 ## 项目定位
 
@@ -413,18 +413,16 @@ $env:RABBITMQ_PORT='5673'
 
 ## 当前开发目标
 
-当前项目已从单体模块化进入微服务联调和中间件补齐阶段：
+当前项目已从单体模块化进入微服务主流程收尾阶段：
 
 1. 已完成 gateway 登录、鉴权、身份透传和 approval/message 主链路冒烟。
 2. 已完成 file-service MinIO 上传、预览、下载和前端文件中心。
-3. 已完成 message-service RabbitMQ 审批通知异步投递、消费落库、失败同步降级、发送重试和消费幂等。
-4. 已完成 smart-office-web microservice 模式 Playwright 冒烟，覆盖登录、页面访问、审批、消息、文件上传。
-5. 已完成 attendance-service XXL-JOB 每日考勤结算、月度统计和缺卡补记。
-6. 已完成 search-service Elasticsearch 制度文档索引同步与全文检索，并通过网关 smoke 验收。
-7. 已完成 auth-service Redis Token 存储、gateway 二次校验与退出失效，并通过网关 smoke 验收。
-8. 已完成 approval-service 高额报销二级审批、重复审批校验和数据库乐观锁防并发流转，网关 smoke 脚本已补充。
-9. 已完成 attendance-service 考勤异常员工通知，并通过网关 smoke 验收重复日结幂等。
-10. 之后补前端体验和 ai-service 独立增强。
-11. AI 模块最后独立迁移，且不阻塞审批、考勤、组织、消息等主流程。
+3. 已完成 message-service RabbitMQ 审批通知、考勤异常通知、发送重试、同步降级和消费幂等。
+4. 已完成 attendance-service XXL-JOB 每日考勤结算、月度统计和缺卡补记。
+5. 已完成 search-service Elasticsearch 制度文档索引同步与全文检索，并通过网关 smoke 验收。
+6. 已完成 auth-service Redis Token 存储、gateway 二次校验与退出失效，并通过网关 smoke 验收。
+7. 已完成 approval-service 高额报销二级审批、重复审批校验和数据库乐观锁防并发流转。
+8. 已完成 smart-office-web 制度文档检索、审批详情、考勤记录等页面，并同步扩展 Playwright microservice 冒烟。
+9. 下一步迁移 ai-service，AI 模块独立增强且不阻塞审批、考勤、组织、消息等主流程。
 
 更细的目标、步骤和验收命令见 [docs/project-roadmap.md](docs/project-roadmap.md) 与 [TODO.md](TODO.md)。

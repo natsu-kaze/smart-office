@@ -19,6 +19,7 @@
       <el-table-column label="操作" width="220" fixed="right">
         <template #default="{ row }">
           <el-space>
+            <el-button size="small" @click="openDetail(row)">详情</el-button>
             <el-button
               v-if="row.status === 'DRAFT' || row.status === 'WITHDRAWN'"
               size="small"
@@ -27,7 +28,7 @@
             >
               提交
             </el-button>
-            <template v-if="tab === 'todos' && row.status === 'PENDING'">
+            <template v-if="tab === 'todos' && isActiveApproval(row.status)">
               <el-button size="small" type="success" @click="handleApprove(row)">通过</el-button>
               <el-button size="small" type="danger" plain @click="handleReject(row)">驳回</el-button>
             </template>
@@ -62,6 +63,39 @@
         <el-button type="primary" @click="saveDraft(true)">保存并提交</el-button>
       </template>
     </el-dialog>
+
+    <el-drawer v-model="detailVisible" title="审批详情" size="560px">
+      <template v-if="detail">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="标题">{{ detail.title }}</el-descriptions-item>
+          <el-descriptions-item label="类型">{{ typeText(detail.approvalType) }}</el-descriptions-item>
+          <el-descriptions-item label="状态">{{ statusText(detail.status) }}</el-descriptions-item>
+          <el-descriptions-item label="申请人">{{ detail.applicantName }}</el-descriptions-item>
+          <el-descriptions-item label="当前审批人">{{ detail.currentApproverName || '-' }}</el-descriptions-item>
+          <el-descriptions-item v-if="detail.amount !== undefined" label="金额">{{ detail.amount }}</el-descriptions-item>
+          <el-descriptions-item label="提交时间">{{ detail.submittedAt || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="完成时间">{{ detail.completedAt || '-' }}</el-descriptions-item>
+        </el-descriptions>
+
+        <h3>审批内容</h3>
+        <p class="detail-text">{{ detail.content || '-' }}</p>
+
+        <h3>流转记录</h3>
+        <el-timeline>
+          <el-timeline-item
+            v-for="record in detail.records || []"
+            :key="record.id"
+            :timestamp="record.createTime"
+            placement="top"
+          >
+            <strong>{{ actionText(record.action) }}</strong>
+            <span class="timeline-operator">{{ record.operatorName || record.operatorUserId }}</span>
+            <p>{{ statusText(record.fromStatus || '') }} -> {{ statusText(record.toStatus || '') }}</p>
+            <p v-if="record.comment">{{ record.comment }}</p>
+          </el-timeline-item>
+        </el-timeline>
+      </template>
+    </el-drawer>
   </section>
 </template>
 
@@ -71,6 +105,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   approveApproval,
   createApproval,
+  getApprovalDetail,
   getApprovalTodos,
   getMyApprovals,
   rejectApproval,
@@ -87,6 +122,8 @@ const tab = ref('my')
 const approvals = ref<ApprovalItem[]>([])
 const loading = ref(false)
 const dialogVisible = ref(false)
+const detailVisible = ref(false)
+const detail = ref<ApprovalItem | null>(null)
 const form = reactive({
   approvalType: 'LEAVE',
   title: '',
@@ -136,6 +173,11 @@ async function handleSubmit(row: ApprovalItem) {
   await load()
 }
 
+async function openDetail(row: ApprovalItem) {
+  detail.value = await getApprovalDetail(row.id)
+  detailVisible.value = true
+}
+
 async function handleApprove(row: ApprovalItem) {
   const { value } = await ElMessageBox.prompt('审批意见', '审批通过', {
     confirmButtonText: '通过',
@@ -163,6 +205,7 @@ function statusText(status: string) {
   const map: Record<string, string> = {
     DRAFT: '草稿',
     PENDING: '待审批',
+    PROCESSING: '审批中',
     APPROVED: '已通过',
     REJECTED: '已驳回',
     WITHDRAWN: '已撤回',
@@ -175,6 +218,7 @@ function statusTag(status: string) {
   const map: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'primary'> = {
     DRAFT: 'info',
     PENDING: 'warning',
+    PROCESSING: 'primary',
     APPROVED: 'success',
     REJECTED: 'danger',
     WITHDRAWN: 'info',
@@ -183,11 +227,54 @@ function statusTag(status: string) {
   return map[status] || 'primary'
 }
 
+function isActiveApproval(status: string) {
+  return status === 'PENDING' || status === 'PROCESSING'
+}
+
+function typeText(type: string) {
+  const map: Record<string, string> = {
+    LEAVE: '请假',
+    OVERTIME: '加班',
+    EXPENSE: '报销',
+    GENERAL: '通用',
+  }
+  return map[type] || type
+}
+
+function actionText(action: string) {
+  const map: Record<string, string> = {
+    CREATE: '创建',
+    SUBMIT: '提交',
+    APPROVE: '通过',
+    REJECT: '驳回',
+    WITHDRAW: '撤回',
+    CLOSE: '关闭',
+  }
+  return map[action] || action
+}
+
 onMounted(load)
 </script>
 
 <style scoped>
 .amount-input {
   width: 100%;
+}
+
+h3 {
+  margin: 20px 0 8px;
+  font-size: 15px;
+}
+
+.detail-text {
+  margin: 0;
+  color: #374151;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.timeline-operator {
+  margin-left: 8px;
+  color: #6b7280;
 }
 </style>

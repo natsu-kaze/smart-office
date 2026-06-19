@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { ApiId, ApprovalItem, PageResult } from '@/types/api'
+import type { ApiId, ApprovalItem, ApprovalRecord, PageResult } from '@/types/api'
 
 export function getMyApprovals(params: Record<string, unknown>) {
   return request.get<PageResult<ApprovalItem>>('/api/approvals/my', { params })
@@ -7,6 +7,14 @@ export function getMyApprovals(params: Record<string, unknown>) {
 
 export function getApprovalTodos(params: Record<string, unknown>) {
   return request.get<PageResult<ApprovalItem>>('/api/approvals/todos', { params })
+}
+
+export function getApprovalDetail(id: ApiId) {
+  return request.get<ApprovalItem>(`/api/approvals/${id}`)
+}
+
+export function getApprovalTimeline(id: ApiId) {
+  return request.get<ApprovalRecord[]>(`/api/approvals/${id}/timeline`)
 }
 
 export function createApproval(data: Record<string, unknown>) {

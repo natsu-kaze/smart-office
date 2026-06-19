@@ -65,7 +65,7 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
   * 每日结算发现缺卡、迟到、早退等异常后，会通过 message-service 通知员工。
 * file-service：MinIO 上传、下载、预览 URL、文件记录。
 * search-service：制度文档 CRUD、MySQL 模糊检索、Elasticsearch 索引同步和全文检索。
-* smart-office-web：登录、工作台、用户、组织、审批、消息、文件、今日考勤基础页面。
+* smart-office-web：登录、工作台、用户、组织、审批、消息、文件、考勤、制度文档检索、审批详情和考勤记录页面。
 
 已固化脚本：
 
@@ -81,12 +81,13 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 
 ## 4. 当前目标
 
-当前阶段目标是补齐非 AI 主流程的可靠性和前端体验，并把每个能力都落到真实业务链路里。
+当前阶段目标是提交非 AI 主流程的前端体验收尾，并继续推进 AI 独立增强。
 
 优先级：
 
-1. 前端补制度文档检索、审批详情、考勤记录等页面，并扩展 Playwright 冒烟。
+1. 提交 smart-office-web 制度文档检索、审批详情、考勤记录页面和 Playwright 冒烟收尾。
 2. ai-service 独立迁移，接 Spring AI 和制度问答。
+3. 后续增强审批超时扫描、Redisson 防重复审批、文件上传限制、角色/菜单管理等非主链路能力。
 
 ## 5. 实施步骤
 
@@ -162,18 +163,25 @@ Smart Office 已完成单体模块化基线，当前主线切到 Spring Cloud Al
 
 ### Step 5：前端体验补齐
 
-要做：
+已实现：
 
 * 制度文档管理和检索页面。
-* 审批详情页、审批时间线、审批操作弹窗。
-* 我的考勤、部门考勤、月度统计页面。
-* 扩展 Playwright microservice 冒烟。
+* 审批详情抽屉、审批时间线和二级审批 `PROCESSING` 状态展示。
+* 我的考勤、部门考勤、月度统计和考勤记录页面。
+* Playwright microservice 冒烟扩展到制度检索、审批详情、考勤记录。
+
+已验收：
+
+* 页面仍只访问 gateway。
+* `npm run build` 通过。
+* `npm run test:e2e:microservice` 通过。
 
 验收：
 
-* 前端仍只访问 gateway。
-* 页面能完整演示登录、审批、消息、文件、考勤、制度搜索。
-* `npm run build` 和 `npm run test:e2e:microservice` 通过。
+* `[x] 页面能完整演示登录、审批、消息、文件、考勤、制度搜索。`
+* `[x] npm run build`
+* `[x] npm run test:e2e:microservice`
+* `[x] git diff --check`
 
 ### Step 6：AI 独立增强
 
@@ -253,6 +261,14 @@ mvn -pl smart-office-services/smart-office-approval-service -am test
 cd smart-office-web
 npm run build
 $env:E2E_BASE_URL='http://127.0.0.1:5174'
+npm run test:e2e:microservice
+```
+
+如需由 Playwright 自动启动前端 dev server，可使用：
+
+```powershell
+$env:E2E_START_SERVER='true'
+$env:E2E_BASE_URL='http://127.0.0.1:5173'
 npm run test:e2e:microservice
 ```
 

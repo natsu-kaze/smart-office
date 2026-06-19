@@ -70,13 +70,49 @@ export interface ApprovalItem {
   currentApproverName?: string
   submittedAt?: string
   completedAt?: string
+  records?: ApprovalRecord[]
+}
+
+export interface ApprovalRecord {
+  id: ApiId
+  formId: ApiId
+  action: string
+  operatorUserId: ApiId
+  operatorName?: string
+  fromStatus?: string
+  toStatus?: string
+  comment?: string
+  createTime?: string
 }
 
 export interface AttendanceToday {
+  id?: ApiId
+  attendanceDate?: string
   checkInTime?: string
   checkOutTime?: string
   checkInStatus?: string
   checkOutStatus?: string
+  remark?: string
+}
+
+export interface AttendanceRecord extends AttendanceToday {
+  id: ApiId
+  userId: ApiId
+  realName?: string
+  departmentId?: ApiId
+  departmentName?: string
+}
+
+export interface AttendanceSummary {
+  userId: ApiId
+  realName?: string
+  summaryMonth: string
+  normalDays: number
+  lateCount: number
+  earlyLeaveCount: number
+  missingCount: number
+  leaveDays: number
+  overtimeHours: number
 }
 
 export interface MessageNotice {
@@ -113,4 +149,15 @@ export interface FileRecord {
   uploaderId?: ApiId
   businessType?: string
   businessId?: ApiId
+}
+
+export interface PolicyDocument {
+  id: ApiId
+  title: string
+  content?: string
+  summary?: string
+  documentVersion?: string
+  status: string
+  publisherId?: ApiId
+  publishedAt?: string
 }

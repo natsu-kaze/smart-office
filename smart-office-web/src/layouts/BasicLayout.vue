@@ -33,6 +33,10 @@
           <el-icon><FolderOpened /></el-icon>
           <span>文件中心</span>
         </el-menu-item>
+        <el-menu-item index="/policies">
+          <el-icon><Document /></el-icon>
+          <span>制度文档</span>
+        </el-menu-item>
         <el-menu-item index="/attendance">
           <el-icon><Clock /></el-icon>
           <span>考勤打卡</span>
@@ -65,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { Bell, Clock, DataBoard, FolderOpened, OfficeBuilding, Tickets, User } from '@element-plus/icons-vue'
+import { Bell, Clock, DataBoard, Document, FolderOpened, OfficeBuilding, Tickets, User } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 

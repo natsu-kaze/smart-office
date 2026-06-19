@@ -51,6 +51,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '文件中心' },
       },
       {
+        path: 'policies',
+        name: 'policies',
+        component: () => import('@/views/policy/PolicyDocumentView.vue'),
+        meta: { title: '制度文档' },
+      },
+      {
         path: 'attendance',
         name: 'attendance',
         component: () => import('@/views/attendance/AttendanceView.vue'),

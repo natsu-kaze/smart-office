@@ -9,7 +9,7 @@
 * 单体 `smart-office-server` 已作为业务基线保留，后续只做必要修复。
 * 微服务 `smart-office-services` 是主线，新增能力优先落到对应微服务。
 * 非 AI 主流程优先补齐，AI 模块最后独立迁移。
-* 当前最优先任务是补齐 smart-office-web 制度文档检索、审批详情、考勤记录等页面体验。
+* 当前已完成 smart-office-web 制度文档检索、审批详情、考勤记录等页面体验，并通过构建与 Playwright microservice 冒烟。
 
 已完成：
 * [x] approval-service 提交审批时创建审批节点、审批待办和审批通知。
@@ -43,6 +43,10 @@
 * [x] message-service RabbitMQ 通知发送支持有限重试，重试后仍失败则同步落库降级。
 * [x] message-service 通知消费按用户、业务类型、业务 ID 和标题做幂等落库。
 * [x] 新增 `scripts/smoke-p1-attendance-message-notice.ps1`，固化考勤异常通知和重复日结幂等链路。
+* [x] smart-office-web 新增制度文档页面，支持创建、编辑、删除、关键词检索和详情查看。
+* [x] smart-office-web 审批中心新增审批详情抽屉、流转记录展示和 `PROCESSING` 状态处理。
+* [x] smart-office-web 考勤页新增月度统计、个人记录和部门记录查询。
+* [x] smart-office-web Playwright microservice 冒烟扩展到制度检索、审批详情和考勤记录。
 
 已验证：
 * [x] `mvn -pl smart-office-services/smart-office-approval-service -am test`
@@ -62,10 +66,12 @@
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-approval-rules-concurrency.ps1`
 * [x] `mvn -pl smart-office-services/smart-office-message-service,smart-office-services/smart-office-attendance-service -am test`
 * [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-attendance-message-notice.ps1`
+* [x] `npm run build`（smart-office-web）
+* [x] `npm run test:e2e:microservice`（`E2E_START_SERVER=true; E2E_BASE_URL=http://127.0.0.1:5173`）
 
 当前下一步：
-1. smart-office-web 补制度文档检索、审批详情、考勤记录等页面。
-2. 最后迁移 ai-service，AI 不阻塞办公主流程。
+1. 执行最终 `git diff --check`，提交并推送前端收尾。
+2. 开始 ai-service 独立迁移，AI 不阻塞办公主流程。
 
 ## 当前目标与步骤
 
@@ -81,20 +87,20 @@
 * [x] 补 auth-service Redis Token 存储、gateway 二次校验与退出失效。
 * [x] 补 approval-service 重复审批/并发审批控制和报销二级审批。
 * [x] 补 message-service 考勤异常通知、消费幂等和失败重试。
-* [ ] 补 smart-office-web 制度文档检索、审批详情、考勤记录等页面。
+* [x] 收尾 smart-office-web 制度文档检索、审批详情、考勤记录等页面并通过 e2e。
 * [ ] 最后迁移 ai-service，AI 能力不阻塞办公主流程。
 
 推荐执行顺序：
 
-1. 前端体验补齐。
+1. 提交并推送前端体验收尾。
 2. ai-service 独立迁移。
+3. 视时间补审批超时扫描、Redisson 防重复审批、文件上传限制等增强项。
 
-当前消息可靠性任务验收命令：
+当前前端收尾验收命令：
 
-* [x] `mvn -pl smart-office-services/smart-office-message-service,smart-office-services/smart-office-attendance-service -am test`
-* [x] `mvn test`
+* [x] `npm run build`（smart-office-web）
+* [x] `npm run test:e2e:microservice`（`E2E_START_SERVER=true; E2E_BASE_URL=http://127.0.0.1:5173`）
 * [x] `git diff --check`
-* [x] `powershell -ExecutionPolicy Bypass -File scripts/smoke-p1-attendance-message-notice.ps1`
 
 下面保留详细模块清单和历史进度，后续每完成一项同步勾选。
 
@@ -505,28 +511,28 @@
 * [x] 创建审批页
 * [x] 我的申请页
 * [x] 我的待办页
-* [ ] 审批详情页
-* [ ] 审批时间线组件
-* [ ] 审批操作弹窗
+* [x] 审批详情抽屉
+* [x] 审批时间线组件
+* [x] 审批操作弹窗
 
 ### 考勤管理
 
 * [x] 今日打卡页
-* [ ] 我的考勤页
-* [ ] 部门考勤页
-* [ ] 月度统计页
+* [x] 我的考勤页
+* [x] 部门考勤页
+* [x] 月度统计页
 
 ### 消息中心
 
-* [ ] 我的消息页
-* [ ] 我的待办页
-* [ ] 消息已读功能
+* [x] 我的消息页
+* [x] 我的待办页
+* [x] 消息已读功能
 
 ### 文件与制度
 
-* [ ] 文件上传组件
-* [ ] 制度文档管理页
-* [ ] 制度文档搜索页
+* [x] 文件上传组件
+* [x] 制度文档管理页
+* [x] 制度文档搜索页
 
 ### AI 助手
 

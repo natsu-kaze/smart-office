@@ -54,6 +54,7 @@ test('smart office microservice pages smoke test', async ({ page }) => {
     ['/approvals', () => page.getByRole('button', { name: '新建审批' })],
     ['/messages', () => page.getByRole('heading', { name: '待办中心' })],
     ['/files', () => page.locator('.page-card').getByRole('heading', { name: '文件中心' })],
+    ['/policies', () => page.locator('.page-card').getByRole('heading', { name: '制度文档' })],
     ['/attendance', () => page.getByText('今日考勤')],
   ] as const
 
@@ -75,6 +76,8 @@ test('smart office microservice pages smoke test', async ({ page }) => {
   await page.goto('/attendance')
   await expect(page.getByRole('button', { name: '上班打卡' })).toBeVisible()
   await expect(page.getByRole('button', { name: '下班打卡' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '月度统计' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '考勤记录' })).toBeVisible()
 
   await expectNoPageProblems(problems)
 })
@@ -109,6 +112,10 @@ test('approval message and file flow works through gateway', async ({ page }, te
   ])
   await expect(createDialog).toBeHidden()
   await expect(page.getByRole('row', { name: new RegExp(title) })).toBeVisible()
+  await page.getByRole('row', { name: new RegExp(title) }).getByRole('button', { name: '详情' }).click()
+  await expect(page.getByText('审批详情')).toBeVisible()
+  await expect(page.getByText('审批内容')).toBeVisible()
+  await page.keyboard.press('Escape')
 
   await login(page, 'manager')
   await page.goto('/approvals')
@@ -133,6 +140,39 @@ test('approval message and file flow works through gateway', async ({ page }, te
   await page.locator('input[type="file"]').setInputFiles(filePath)
   await expect(page.getByText('文件已上传')).toBeVisible()
   await expect(page.getByRole('row', { name: new RegExp(fileName) })).toBeVisible()
+
+  await expectNoPageProblems(problems)
+})
+
+test('policy search page supports create and query through gateway', async ({ page }) => {
+  const problems = collectPageProblems(page)
+  const title = `Playwright policy ${Date.now()}`
+  const keyword = title.split(' ').pop()!
+
+  await login(page, 'admin')
+  await page.goto('/policies')
+  await page.getByRole('button', { name: '新建制度' }).click()
+  const policyDialog = page.getByRole('dialog', { name: '新建制度' })
+  await expect(policyDialog).toBeVisible()
+  await policyDialog.locator('.el-form-item').filter({ hasText: '标题' }).locator('input').fill(title)
+  await policyDialog.locator('.el-form-item').filter({ hasText: '摘要' }).locator('textarea').fill('Created by Playwright policy smoke.')
+  await policyDialog.locator('.el-form-item').filter({ hasText: '正文' }).locator('textarea').fill('Policy content for microservice search smoke.')
+  await Promise.all([
+    page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return url.pathname === '/api/policies' && response.request().method() === 'POST' && response.status() < 400
+    }),
+    policyDialog.getByRole('button', { name: '保存' }).click(),
+  ])
+  await expect(policyDialog).toBeHidden()
+  await expect(page.getByRole('row', { name: new RegExp(title) })).toBeVisible()
+
+  await page.getByPlaceholder('标题、摘要、正文').fill(keyword)
+  await page.getByRole('button', { name: '搜索' }).click()
+  await expect(page.getByRole('row', { name: new RegExp(title) })).toBeVisible()
+  await page.getByRole('row', { name: new RegExp(title) }).getByRole('button', { name: '详情' }).click()
+  await expect(page.getByText('制度详情')).toBeVisible()
+  await expect(page.getByText('Policy content for microservice search smoke.')).toBeVisible()
 
   await expectNoPageProblems(problems)
 })
