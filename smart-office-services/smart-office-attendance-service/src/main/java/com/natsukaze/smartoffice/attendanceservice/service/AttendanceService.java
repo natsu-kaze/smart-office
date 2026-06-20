@@ -6,6 +6,7 @@ import com.natsukaze.smartoffice.api.org.client.OrgEmployeeClient;
 import com.natsukaze.smartoffice.api.org.dto.OrgEmployeeDTO;
 import com.natsukaze.smartoffice.api.system.client.SystemUserClient;
 import com.natsukaze.smartoffice.api.system.dto.CurrentUserDTO;
+import com.natsukaze.smartoffice.api.system.dto.SystemAuthUserDTO;
 import com.natsukaze.smartoffice.attendanceservice.dto.AttendanceRecordQuery;
 import com.natsukaze.smartoffice.attendanceservice.dto.AttendanceRuleSaveRequest;
 import com.natsukaze.smartoffice.attendanceservice.entity.AttendanceRecord;
@@ -100,7 +101,8 @@ public class AttendanceService {
         return pageRecords(query);
     }
 
-    public PageResult<AttendanceRecordVO> departmentRecords(AttendanceRecordQuery query) {
+    public PageResult<AttendanceRecordVO> departmentRecords(Long operatorUserId, String username, AttendanceRecordQuery query) {
+        ensureAttendanceManager(operatorUserId, username);
         if (query.getDepartmentId() == null) {
             throw new BusinessException("departmentId is required");
         }
@@ -205,6 +207,22 @@ public class AttendanceService {
             throw new BusinessException("user not found");
         }
         return user;
+    }
+
+    private void ensureAttendanceManager(Long operatorUserId, String username) {
+        CurrentUserDTO user = requireUser(operatorUserId);
+        Result<SystemAuthUserDTO> result = systemUserClient.getByUsername(username);
+        if (!success(result) || result.data() == null || result.data().roles() == null) {
+            throw new BusinessException("permission denied");
+        }
+        boolean allowed = result.data().roles().stream()
+                .anyMatch(role -> "ADMIN".equals(role) || "MANAGER".equals(role));
+        if (!allowed) {
+            throw new BusinessException("permission denied");
+        }
+        if (user.departmentId() == null && result.data().roles().stream().noneMatch("ADMIN"::equals)) {
+            throw new BusinessException("department not found");
+        }
     }
 
     private AttendanceSummaryVO buildSummaryFromRecords(Long userId, String month) {

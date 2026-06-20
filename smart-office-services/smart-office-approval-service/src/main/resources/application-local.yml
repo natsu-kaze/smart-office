@@ -23,3 +23,13 @@ spring:
       - optional:nacos:shared-mybatis.yaml
       - optional:nacos:shared-logs.yaml
       - optional:nacos:shared-feign.yaml
+
+smart-office:
+  xxl-job:
+    enabled: ${XXL_JOB_ENABLED:false}
+    admin-addresses: ${XXL_JOB_ADMIN_ADDRESSES:http://127.0.0.1:8088/xxl-job-admin}
+    app-name: ${XXL_JOB_APPROVAL_APP_NAME:smart-office-approval-job-executor}
+    port: ${XXL_JOB_APPROVAL_PORT:10000}
+    access-token: ${XXL_JOB_ACCESS_TOKEN:smart-office}
+    log-path: ${XXL_JOB_LOG_PATH:logs/xxl-job}
+    log-retention-days: ${XXL_JOB_LOG_RETENTION_DAYS:30}

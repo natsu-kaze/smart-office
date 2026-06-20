@@ -18,6 +18,15 @@ public interface OrgEmployeeClient {
     @GetMapping("/department/{departmentId}/user-ids")
     Result<List<Long>> listUserIdsByDepartmentId(@PathVariable("departmentId") Long departmentId);
 
+    @GetMapping("/department/{departmentId}/subtree-user-ids")
+    Result<List<Long>> listUserIdsByDepartmentSubtree(@PathVariable("departmentId") Long departmentId);
+
+    @GetMapping("/department/{departmentId}/subtree-leader-user-ids")
+    Result<List<Long>> listLeaderUserIdsByDepartmentSubtree(@PathVariable("departmentId") Long departmentId);
+
+    @GetMapping("/leader-user-ids")
+    Result<List<Long>> listLeaderUserIds();
+
     @GetMapping("/user-ids")
     Result<List<Long>> listActiveUserIds();
 }

@@ -27,6 +27,7 @@ export interface AuthUser {
   email?: string
   avatar?: string
   roles: string[]
+  permissions?: string[]
 }
 
 export interface LoginResponse {
@@ -42,8 +43,56 @@ export interface UserItem {
   realName: string
   phone?: string
   email?: string
+  avatar?: string
   status: number
+  roleIds?: ApiId[]
+  roleCodes?: string[]
   roleNames?: string[]
+}
+
+export interface RoleItem {
+  id: ApiId
+  roleCode: string
+  roleName: string
+  sort?: number
+  status: number
+  remark?: string
+  menuIds?: ApiId[]
+}
+
+export interface RoleSavePayload {
+  roleCode: string
+  roleName: string
+  sort?: number
+  status: number
+  remark?: string
+}
+
+export interface MenuNode {
+  id: ApiId
+  parentId: ApiId
+  menuName: string
+  menuType: string
+  path?: string
+  component?: string
+  permission?: string
+  icon?: string
+  sort?: number
+  visible: number
+  status: number
+  children?: MenuNode[]
+}
+
+export interface ProfileUpdatePayload {
+  realName: string
+  phone?: string
+  email?: string
+  avatar?: string
+}
+
+export interface PasswordChangePayload {
+  oldPassword: string
+  newPassword: string
 }
 
 export interface DepartmentNode {
@@ -51,9 +100,59 @@ export interface DepartmentNode {
   parentId: ApiId
   departmentCode: string
   departmentName: string
+  leaderUserId?: ApiId
   leaderName?: string
+  sort?: number
   status: number
   children?: DepartmentNode[]
+}
+
+export interface DepartmentSavePayload {
+  parentId: ApiId
+  departmentCode: string
+  departmentName: string
+  leaderUserId?: ApiId | null
+  sort?: number
+  status: number
+}
+
+export interface CompanyInfo {
+  id: ApiId
+  companyName: string
+  contactName?: string
+  contactPhone?: string
+  address?: string
+  status: number
+}
+
+export interface PositionItem {
+  id: ApiId
+  departmentId: ApiId
+  departmentName?: string
+  positionCode: string
+  positionName: string
+  sort?: number
+  status: number
+}
+
+export interface PositionSavePayload {
+  departmentId: ApiId
+  positionCode: string
+  positionName: string
+  sort?: number
+  status: number
+}
+
+export interface EmployeeItem {
+  id: ApiId
+  userId: ApiId
+  realName?: string
+  employeeNo: string
+  departmentId: ApiId
+  departmentName?: string
+  positionId?: ApiId
+  positionName?: string
+  employmentStatus: string
 }
 
 export interface ApprovalItem {
@@ -135,6 +234,17 @@ export interface MessageTodo {
   dueTime?: string
   completedTime?: string
   createTime?: string
+}
+
+export interface AnnouncementPayload {
+  title: string
+  content: string
+  targetType: string
+  departmentId?: ApiId | null
+}
+
+export interface AnnouncementSendResult {
+  recipientCount: number
 }
 
 export interface FileRecord {

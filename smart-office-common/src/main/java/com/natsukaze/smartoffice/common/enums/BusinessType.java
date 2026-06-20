@@ -14,6 +14,7 @@ public enum BusinessType implements BaseCodeEnum {
     ATTENDANCE("ATTENDANCE", "Attendance"),
     FILE("FILE", "File"),
     POLICY("POLICY", "Policy document"),
+    ANNOUNCEMENT("ANNOUNCEMENT", "Announcement"),
     AI("AI", "AI assistant"),
     TEST("TEST", "Test"),
     GENERAL("GENERAL", "General");

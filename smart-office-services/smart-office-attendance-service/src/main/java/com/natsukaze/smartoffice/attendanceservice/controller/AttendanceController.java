@@ -49,8 +49,10 @@ public class AttendanceController {
     }
 
     @GetMapping("/department-records")
-    public Result<PageResult<AttendanceRecordVO>> departmentRecords(@ModelAttribute AttendanceRecordQuery query) {
-        return Result.success(attendanceService.departmentRecords(query));
+    public Result<PageResult<AttendanceRecordVO>> departmentRecords(@RequestHeader("X-User-Id") Long userId,
+                                                                    @RequestHeader("X-Username") String username,
+                                                                    @ModelAttribute AttendanceRecordQuery query) {
+        return Result.success(attendanceService.departmentRecords(userId, username, query));
     }
 
     @GetMapping("/summary/monthly")

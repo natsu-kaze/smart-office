@@ -24,3 +24,7 @@ export function getFilePreviewUrl(id: ApiId) {
 export function downloadFile(id: ApiId) {
   return request.get<Blob>(`/api/files/${id}/download`, { responseType: 'blob' })
 }
+
+export function deleteFile(id: ApiId) {
+  return request.delete(`/api/files/${id}`)
+}

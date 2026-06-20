@@ -1,5 +1,12 @@
 import request from '@/utils/request'
-import type { ApiId, MessageNotice, MessageTodo, PageResult } from '@/types/api'
+import type {
+  AnnouncementPayload,
+  AnnouncementSendResult,
+  ApiId,
+  MessageNotice,
+  MessageTodo,
+  PageResult,
+} from '@/types/api'
 
 export function getUnreadCount() {
   return request.get<number>('/api/messages/unread-count')
@@ -21,6 +28,22 @@ export function markMessageRead(id: ApiId) {
   return request.patch(`/api/messages/${id}/read`)
 }
 
+export function batchMarkMessagesRead(ids: ApiId[]) {
+  return request.patch('/api/messages/read', { ids })
+}
+
 export function completeMessageTodo(id: ApiId) {
   return request.patch(`/api/messages/todos/${id}/complete`)
+}
+
+export function deleteMessage(id: ApiId) {
+  return request.delete(`/api/messages/${id}`)
+}
+
+export function batchDeleteMessages(ids: ApiId[]) {
+  return request.delete('/api/messages/batch', { data: { ids } })
+}
+
+export function publishAnnouncement(data: AnnouncementPayload) {
+  return request.post<AnnouncementSendResult>('/api/messages/announcements', data)
 }

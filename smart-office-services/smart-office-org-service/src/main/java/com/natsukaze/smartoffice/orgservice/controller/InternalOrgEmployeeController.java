@@ -28,6 +28,21 @@ public class InternalOrgEmployeeController {
         return Result.success(orgService.listUserIdsByDepartmentId(departmentId));
     }
 
+    @GetMapping("/department/{departmentId}/subtree-user-ids")
+    public Result<List<Long>> listUserIdsByDepartmentSubtree(@PathVariable Long departmentId) {
+        return Result.success(orgService.listUserIdsByDepartmentSubtree(departmentId));
+    }
+
+    @GetMapping("/department/{departmentId}/subtree-leader-user-ids")
+    public Result<List<Long>> listLeaderUserIdsByDepartmentSubtree(@PathVariable Long departmentId) {
+        return Result.success(orgService.listLeaderUserIdsByDepartmentSubtree(departmentId));
+    }
+
+    @GetMapping("/leader-user-ids")
+    public Result<List<Long>> listLeaderUserIds() {
+        return Result.success(orgService.listLeaderUserIds());
+    }
+
     @GetMapping("/user-ids")
     public Result<List<Long>> listActiveUserIds() {
         return Result.success(orgService.listActiveUserIds());

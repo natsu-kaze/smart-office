@@ -12,11 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -64,10 +61,6 @@ public class AuthService {
 
     private AuthUserVO toUserVO(UserPrincipal principal) {
         SystemAuthUserDTO user = principal.getUser();
-        List<String> roles = principal.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .map(authority -> authority.replaceFirst("^ROLE_", ""))
-                .toList();
         return AuthUserVO.builder()
                 .id(user.userId())
                 .username(user.username())
@@ -75,7 +68,8 @@ public class AuthService {
                 .phone(user.phone())
                 .email(user.email())
                 .avatar(user.avatar())
-                .roles(roles)
+                .roles(user.roles())
+                .permissions(user.permissions())
                 .build();
     }
 }

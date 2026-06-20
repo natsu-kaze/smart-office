@@ -40,6 +40,9 @@ request.interceptors.response.use(
       removeStoredUser()
       router.push('/login')
     }
+    if (body.code === 403) {
+      router.push('/403')
+    }
     ElMessage.error(body.message || '请求失败')
     return Promise.reject(new Error(body.message || '请求失败'))
   }) as never,
@@ -50,6 +53,9 @@ request.interceptors.response.use(
       removeToken()
       removeStoredUser()
       router.push('/login')
+    }
+    if (status === 403) {
+      router.push('/403')
     }
     ElMessage.error(message || '网络异常')
     return Promise.reject(error)

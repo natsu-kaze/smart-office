@@ -9,37 +9,9 @@
         </div>
       </div>
       <el-menu :default-active="route.path" router class="nav-menu">
-        <el-menu-item index="/dashboard">
-          <el-icon><DataBoard /></el-icon>
-          <span>工作台</span>
-        </el-menu-item>
-        <el-menu-item index="/system/users">
-          <el-icon><User /></el-icon>
-          <span>用户管理</span>
-        </el-menu-item>
-        <el-menu-item index="/org">
-          <el-icon><OfficeBuilding /></el-icon>
-          <span>组织架构</span>
-        </el-menu-item>
-        <el-menu-item index="/approvals">
-          <el-icon><Tickets /></el-icon>
-          <span>审批中心</span>
-        </el-menu-item>
-        <el-menu-item index="/messages">
-          <el-icon><Bell /></el-icon>
-          <span>消息中心</span>
-        </el-menu-item>
-        <el-menu-item index="/files">
-          <el-icon><FolderOpened /></el-icon>
-          <span>文件中心</span>
-        </el-menu-item>
-        <el-menu-item index="/policies">
-          <el-icon><Document /></el-icon>
-          <span>制度文档</span>
-        </el-menu-item>
-        <el-menu-item index="/attendance">
-          <el-icon><Clock /></el-icon>
-          <span>考勤打卡</span>
+        <el-menu-item v-for="item in visibleNavItems" :key="item.path" :index="item.path">
+          <el-icon><component :is="item.icon" /></el-icon>
+          <span>{{ item.label }}</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -51,12 +23,13 @@
         </div>
         <el-dropdown>
           <button class="user-button">
-            <el-avatar :size="32">{{ authStore.displayName.slice(0, 1) }}</el-avatar>
+            <el-avatar :size="32" :src="authStore.user?.avatar">{{ authStore.displayName.slice(0, 1) }}</el-avatar>
             <span>{{ authStore.displayName }}</span>
           </button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item @click="handleLogout">退出登录</el-dropdown-item>
+              <el-dropdown-item @click="router.push('/profile')">个人中心</el-dropdown-item>
+              <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -69,13 +42,34 @@
 </template>
 
 <script setup lang="ts">
-import { Bell, Clock, DataBoard, Document, FolderOpened, OfficeBuilding, Tickets, User } from '@element-plus/icons-vue'
+import { computed } from 'vue'
+import { Bell, Clock, DataBoard, Document, FolderOpened, Lock, OfficeBuilding, Tickets, User } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+
+const navItems = [
+  { path: '/dashboard', label: '工作台', icon: DataBoard, permission: 'dashboard:view' },
+  { path: '/system/users', label: '用户管理', icon: User, permission: 'sys:user:list', roles: ['ADMIN'] },
+  { path: '/system/roles', label: '角色权限', icon: Lock, permission: 'sys:role:list', roles: ['ADMIN'] },
+  { path: '/org', label: '组织架构', icon: OfficeBuilding, permission: 'org:manage', roles: ['ADMIN', 'MANAGER'] },
+  { path: '/approvals', label: '审批中心', icon: Tickets, permission: 'approval:list' },
+  { path: '/messages', label: '消息中心', icon: Bell, permission: 'message:list' },
+  { path: '/files', label: '文件中心', icon: FolderOpened, permission: 'file:list' },
+  { path: '/policies', label: '制度文档', icon: Document, permission: 'policy:list' },
+  { path: '/attendance', label: '考勤打卡', icon: Clock, permission: 'attendance:list' },
+]
+
+const visibleNavItems = computed(() => navItems.filter((item) => canAccess(item.permission, item.roles)))
+
+function canAccess(permission: string, roles?: string[]) {
+  if (authStore.hasRole('ADMIN')) return true
+  if (roles?.some((role) => authStore.hasRole(role))) return true
+  return authStore.hasPermission(permission)
+}
 
 async function handleLogout() {
   await authStore.logout()

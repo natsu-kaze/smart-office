@@ -8,6 +8,10 @@ interface AuthState {
   user: AuthUser | null
 }
 
+function normalizeRole(role: string) {
+  return role.startsWith('ROLE_') ? role.slice(5) : role
+}
+
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     token: getToken(),
@@ -16,6 +20,13 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isLoggedIn: (state) => Boolean(state.token),
     displayName: (state) => state.user?.realName || state.user?.username || '未登录',
+    hasRole: (state) => (roleCode: string) =>
+      Boolean(state.user?.roles?.some((role) => normalizeRole(role) === roleCode)),
+    hasPermission: (state) => (permission: string) =>
+      Boolean(state.user?.permissions?.includes(permission)),
+    canManageContent(): boolean {
+      return this.hasRole('ADMIN') || this.hasRole('MANAGER')
+    },
   },
   actions: {
     async login(payload: LoginRequest) {

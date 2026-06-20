@@ -28,6 +28,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -203,6 +204,23 @@ class ApprovalServiceTest {
         verify(messageCommandClient, never()).completeTodo(any(), any(), any());
         verify(messageCommandClient, never()).createNotice(any(NoticeCreateCommand.class));
         verify(processMapper, never()).updateById(any(ApprovalProcess.class));
+    }
+
+    @Test
+    void scanTimeoutApprovalsNotifiesCurrentApprovers() {
+        ApprovalForm form = pendingForm();
+        form.setSubmittedAt(LocalDateTime.now().minusHours(30));
+        when(formMapper.selectList(any(Wrapper.class))).thenReturn(List.of(form));
+        when(messageCommandClient.createNotice(any(NoticeCreateCommand.class))).thenReturn(Result.success());
+
+        int count = approvalService.scanTimeoutApprovals(24);
+
+        assertThat(count).isEqualTo(1);
+        ArgumentCaptor<NoticeCreateCommand> noticeCaptor = ArgumentCaptor.forClass(NoticeCreateCommand.class);
+        verify(messageCommandClient).createNotice(noticeCaptor.capture());
+        assertThat(noticeCaptor.getValue().userId()).isEqualTo(APPROVER_ID);
+        assertThat(noticeCaptor.getValue().title()).isEqualTo("Approval timeout reminder");
+        assertThat(noticeCaptor.getValue().businessId()).isEqualTo(FORM_ID);
     }
 
     private ApprovalForm draftForm() {

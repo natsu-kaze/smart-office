@@ -7,6 +7,8 @@ import com.natsukaze.smartoffice.api.system.dto.SystemAuthUserDTO;
 import com.natsukaze.smartoffice.common.core.ErrorCode;
 import com.natsukaze.smartoffice.common.core.PageResult;
 import com.natsukaze.smartoffice.common.exception.BusinessException;
+import com.natsukaze.smartoffice.systemservice.user.dto.PasswordChangeRequest;
+import com.natsukaze.smartoffice.systemservice.user.dto.ProfileUpdateRequest;
 import com.natsukaze.smartoffice.systemservice.user.dto.UserPageQuery;
 import com.natsukaze.smartoffice.systemservice.user.entity.SysRole;
 import com.natsukaze.smartoffice.systemservice.user.entity.SysUser;
@@ -16,6 +18,7 @@ import com.natsukaze.smartoffice.systemservice.user.mapper.SysUserMapper;
 import com.natsukaze.smartoffice.systemservice.user.mapper.SysUserRoleMapper;
 import com.natsukaze.smartoffice.systemservice.user.vo.UserVO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -40,6 +43,10 @@ public class SystemUserService {
 
     private final SysRoleMapper sysRoleMapper;
 
+    private final PasswordEncoder passwordEncoder;
+
+    private final SystemPermissionService permissionService;
+
     public PageResult<UserVO> page(UserPageQuery query) {
         LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<SysUser>()
                 .eq(query.getStatus() != null, SysUser::getStatus, query.getStatus())
@@ -59,6 +66,31 @@ public class SystemUserService {
         return new CurrentUserDTO(user.getId(), user.getUsername(), user.getRealName(), null, null);
     }
 
+    public UserVO profile(Long userId) {
+        return toVO(getRequiredUser(userId));
+    }
+
+    @Transactional
+    public UserVO updateProfile(Long userId, ProfileUpdateRequest request) {
+        SysUser user = getRequiredUser(userId);
+        user.setRealName(request.getRealName());
+        user.setPhone(request.getPhone());
+        user.setEmail(request.getEmail());
+        user.setAvatar(request.getAvatar());
+        sysUserMapper.updateById(user);
+        return toVO(user);
+    }
+
+    @Transactional
+    public void changePassword(Long userId, PasswordChangeRequest request) {
+        SysUser user = getRequiredUser(userId);
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new BusinessException("old password is incorrect");
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        sysUserMapper.updateById(user);
+    }
+
     public SystemAuthUserDTO getAuthUserByUsername(String username) {
         SysUser user = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
                 .eq(SysUser::getUsername, username)
@@ -75,7 +107,8 @@ public class SystemUserService {
                 user.getEmail(),
                 user.getAvatar(),
                 user.getStatus(),
-                listRoleCodes(user.getId()));
+                listRoleCodes(user.getId()),
+                permissionService.listPermissionsByUserId(user.getId()));
     }
 
     public CurrentUserDTO getFirstUserByRole(String roleCode) {

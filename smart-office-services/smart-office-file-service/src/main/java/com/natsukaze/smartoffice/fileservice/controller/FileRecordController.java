@@ -1,9 +1,9 @@
 package com.natsukaze.smartoffice.fileservice.controller;
 
 import com.natsukaze.smartoffice.common.core.Result;
-import com.natsukaze.smartoffice.common.core.PageQuery;
 import com.natsukaze.smartoffice.common.core.PageResult;
 import com.natsukaze.smartoffice.fileservice.dto.FileRecordCreateRequest;
+import com.natsukaze.smartoffice.fileservice.dto.FileRecordPageQuery;
 import com.natsukaze.smartoffice.fileservice.service.FileRecordService;
 import com.natsukaze.smartoffice.fileservice.vo.FileRecordVO;
 import jakarta.validation.Valid;
@@ -36,7 +36,7 @@ public class FileRecordController {
 
     @GetMapping
     public Result<PageResult<FileRecordVO>> myFiles(@RequestHeader("X-User-Id") Long userId,
-                                                    @ModelAttribute PageQuery query) {
+                                                    @ModelAttribute FileRecordPageQuery query) {
         return Result.success(fileRecordService.myFiles(userId, query));
     }
 
@@ -82,8 +82,10 @@ public class FileRecordController {
     }
 
     @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Long id) {
-        fileRecordService.delete(id);
+    public Result<Void> delete(@RequestHeader("X-User-Id") Long userId,
+                               @RequestHeader("X-Username") String username,
+                               @PathVariable Long id) {
+        fileRecordService.delete(userId, username, id);
         return Result.success();
     }
 }

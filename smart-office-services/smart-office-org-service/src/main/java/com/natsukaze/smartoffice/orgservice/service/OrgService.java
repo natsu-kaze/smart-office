@@ -129,6 +129,9 @@ public class OrgService {
         if (request.getParentId() != null && request.getParentId().equals(id)) {
             throw new BusinessException("department parent cannot be itself");
         }
+        if (request.getParentId() != null && isDescendantDepartment(request.getParentId(), id)) {
+            throw new BusinessException("department parent cannot be its child");
+        }
         if (request.getParentId() != null && request.getParentId() != 0) {
             requireDepartment(request.getParentId());
         }
@@ -258,6 +261,37 @@ public class OrgService {
                 .toList();
     }
 
+    public List<Long> listUserIdsByDepartmentSubtree(Long departmentId) {
+        requireDepartment(departmentId);
+        List<Long> departmentIds = descendantDepartmentIds(departmentId);
+        return employeeMapper.selectList(new LambdaQueryWrapper<OrgEmployee>()
+                        .in(OrgEmployee::getDepartmentId, departmentIds))
+                .stream()
+                .map(OrgEmployee::getUserId)
+                .distinct()
+                .toList();
+    }
+
+    public List<Long> listLeaderUserIdsByDepartmentSubtree(Long departmentId) {
+        requireDepartment(departmentId);
+        return departmentMapper.selectList(new LambdaQueryWrapper<OrgDepartment>()
+                        .in(OrgDepartment::getId, descendantDepartmentIds(departmentId))
+                        .isNotNull(OrgDepartment::getLeaderUserId))
+                .stream()
+                .map(OrgDepartment::getLeaderUserId)
+                .distinct()
+                .toList();
+    }
+
+    public List<Long> listLeaderUserIds() {
+        return departmentMapper.selectList(new LambdaQueryWrapper<OrgDepartment>()
+                        .isNotNull(OrgDepartment::getLeaderUserId))
+                .stream()
+                .map(OrgDepartment::getLeaderUserId)
+                .distinct()
+                .toList();
+    }
+
     public List<Long> listActiveUserIds() {
         return employeeMapper.selectList(new LambdaQueryWrapper<OrgEmployee>()
                         .eq(OrgEmployee::getEmploymentStatus, "ACTIVE"))
@@ -311,6 +345,41 @@ public class OrgService {
         department.setSort(request.getSort() == null ? (creating ? 0 : department.getSort()) : request.getSort());
         department.setStatus(request.getStatus() == null ? (creating ? 1 : department.getStatus()) : request.getStatus());
         ensureStatus(department.getStatus());
+    }
+
+    private boolean isDescendantDepartment(Long candidateParentId, Long currentDepartmentId) {
+        if (candidateParentId == null || candidateParentId == 0) {
+            return false;
+        }
+        Long cursor = candidateParentId;
+        while (cursor != null && cursor != 0) {
+            if (cursor.equals(currentDepartmentId)) {
+                return true;
+            }
+            OrgDepartment parent = departmentMapper.selectById(cursor);
+            if (parent == null) {
+                return false;
+            }
+            cursor = parent.getParentId();
+        }
+        return false;
+    }
+
+    private List<Long> descendantDepartmentIds(Long rootDepartmentId) {
+        List<OrgDepartment> departments = departmentMapper.selectList(new LambdaQueryWrapper<OrgDepartment>()
+                .select(OrgDepartment::getId, OrgDepartment::getParentId));
+        Map<Long, List<OrgDepartment>> childrenByParent = departments.stream()
+                .collect(Collectors.groupingBy(department -> department.getParentId() == null ? 0L : department.getParentId()));
+        java.util.ArrayList<Long> ids = new java.util.ArrayList<>();
+        collectDepartmentIds(rootDepartmentId, childrenByParent, ids);
+        return ids;
+    }
+
+    private void collectDepartmentIds(Long departmentId, Map<Long, List<OrgDepartment>> childrenByParent, List<Long> ids) {
+        ids.add(departmentId);
+        for (OrgDepartment child : childrenByParent.getOrDefault(departmentId, List.of())) {
+            collectDepartmentIds(child.getId(), childrenByParent, ids);
+        }
     }
 
     private void fillPosition(OrgPosition position, PositionSaveRequest request, boolean creating) {

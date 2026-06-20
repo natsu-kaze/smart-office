@@ -4,19 +4,17 @@
       <header class="table-header">
         <div>
           <h2>制度文档</h2>
-          <p>检索和维护企业制度、流程说明与公告文件</p>
+          <p>维护企业制度、流程说明和公告文档，支持全文检索与上传解析。</p>
         </div>
-        <el-button type="primary" @click="openCreateDialog">新建制度</el-button>
+        <el-space v-if="canManage" wrap>
+          <el-button @click="openUploadDialog">上传制度</el-button>
+          <el-button type="primary" @click="openCreateDialog">新建制度</el-button>
+        </el-space>
       </header>
 
       <el-form class="filters" :model="query" inline>
         <el-form-item label="关键词">
-          <el-input
-            v-model="query.keyword"
-            clearable
-            placeholder="标题、摘要、正文"
-            @keyup.enter="load"
-          />
+          <el-input v-model="query.keyword" clearable placeholder="标题、摘要、正文" @keyup.enter="search" />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="query.status" clearable placeholder="全部">
@@ -26,7 +24,7 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="load">搜索</el-button>
+          <el-button type="primary" @click="search">搜索</el-button>
           <el-button @click="resetQuery">重置</el-button>
         </el-form-item>
       </el-form>
@@ -35,18 +33,41 @@
         <el-table-column prop="title" label="标题" min-width="220" show-overflow-tooltip />
         <el-table-column prop="summary" label="摘要" min-width="260" show-overflow-tooltip />
         <el-table-column prop="documentVersion" label="版本" width="110" />
-        <el-table-column prop="status" label="状态" width="110">
+        <el-table-column label="状态" width="110">
           <template #default="{ row }">
             <el-tag :type="statusTag(row.status)">{{ statusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="publishedAt" label="发布时间" min-width="170" />
-        <el-table-column label="操作" width="210" fixed="right">
+        <el-table-column label="操作" :width="canManage ? 330 : 90" fixed="right">
           <template #default="{ row }">
-            <el-space>
+            <el-space wrap>
               <el-button size="small" @click="openDetail(row)">详情</el-button>
-              <el-button size="small" type="primary" plain @click="openEditDialog(row)">编辑</el-button>
-              <el-button size="small" type="danger" plain @click="handleDelete(row)">删除</el-button>
+              <template v-if="canManage">
+                <el-button size="small" type="primary" plain @click="openEditDialog(row)">编辑</el-button>
+                <el-button
+                  v-if="row.status !== 'PUBLISHED'"
+                  size="small"
+                  type="success"
+                  plain
+                  @click="handleStatus(row, 'PUBLISHED')"
+                >
+                  发布
+                </el-button>
+                <el-button v-if="row.status !== 'DRAFT'" size="small" plain @click="handleStatus(row, 'DRAFT')">
+                  转草稿
+                </el-button>
+                <el-button
+                  v-if="row.status !== 'ARCHIVED'"
+                  size="small"
+                  type="warning"
+                  plain
+                  @click="handleStatus(row, 'ARCHIVED')"
+                >
+                  归档
+                </el-button>
+                <el-button size="small" type="danger" plain @click="handleDelete(row)">删除</el-button>
+              </template>
             </el-space>
           </template>
         </el-table-column>
@@ -56,7 +77,8 @@
         <el-pagination
           v-model:current-page="query.current"
           v-model:page-size="query.size"
-          layout="total, prev, pager, next"
+          layout="total, sizes, prev, pager, next"
+          :page-sizes="[10, 20, 50]"
           :total="total"
           @current-change="load"
           @size-change="load"
@@ -64,26 +86,26 @@
       </div>
     </div>
 
-    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑制度' : '新建制度'" width="640px">
+    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑制度' : '新建制度'" width="680px">
       <el-form :model="form" label-width="90px">
-        <el-form-item label="标题">
+        <el-form-item label="标题" required>
           <el-input v-model="form.title" />
         </el-form-item>
         <el-form-item label="版本">
           <el-input v-model="form.documentVersion" placeholder="例如 v1.0" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="form.status">
-            <el-option label="草稿" value="DRAFT" />
-            <el-option label="已发布" value="PUBLISHED" />
-            <el-option label="已归档" value="ARCHIVED" />
-          </el-select>
+          <el-radio-group v-model="form.status">
+            <el-radio-button label="DRAFT">草稿</el-radio-button>
+            <el-radio-button label="PUBLISHED">发布</el-radio-button>
+            <el-radio-button label="ARCHIVED">归档</el-radio-button>
+          </el-radio-group>
         </el-form-item>
         <el-form-item label="摘要">
           <el-input v-model="form.summary" type="textarea" :rows="3" />
         </el-form-item>
         <el-form-item label="正文">
-          <el-input v-model="form.content" type="textarea" :rows="8" />
+          <el-input v-model="form.content" type="textarea" :rows="10" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -92,7 +114,43 @@
       </template>
     </el-dialog>
 
-    <el-drawer v-model="detailVisible" title="制度详情" size="520px">
+    <el-dialog v-model="uploadVisible" title="上传制度文档" width="560px">
+      <el-form :model="uploadForm" label-width="90px">
+        <el-form-item label="文件" required>
+          <el-upload
+            drag
+            :auto-upload="false"
+            :limit="1"
+            accept=".pdf,.txt,.md"
+            :on-change="handleUploadChange"
+            :on-remove="handleUploadRemove"
+          >
+            <div class="upload-title">拖拽或点击选择文件</div>
+            <template #tip>
+              <div class="upload-tip">支持 PDF、TXT、Markdown，上传后自动解析正文并同步检索索引。</div>
+            </template>
+          </el-upload>
+        </el-form-item>
+        <el-form-item label="标题">
+          <el-input v-model="uploadForm.title" placeholder="不填则使用文件名" />
+        </el-form-item>
+        <el-form-item label="版本">
+          <el-input v-model="uploadForm.documentVersion" placeholder="例如 v1.0" />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-radio-group v-model="uploadForm.status">
+            <el-radio-button label="DRAFT">草稿</el-radio-button>
+            <el-radio-button label="PUBLISHED">发布</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="uploadVisible = false">取消</el-button>
+        <el-button type="primary" :loading="uploading" @click="handleUploadPolicy">上传并解析</el-button>
+      </template>
+    </el-dialog>
+
+    <el-drawer v-model="detailVisible" title="制度详情" size="560px">
       <template v-if="selectedPolicy">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="标题">{{ selectedPolicy.title }}</el-descriptions-item>
@@ -110,18 +168,27 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { createPolicy, deletePolicy, getPolicies, getPolicyDetail, updatePolicy } from '@/api/policy'
+import type { UploadFile } from 'element-plus'
+import { createPolicy, deletePolicy, getPolicies, getPolicyDetail, updatePolicy, uploadPolicy } from '@/api/policy'
+import { useAuthStore } from '@/stores/auth'
 import type { ApiId, PolicyDocument } from '@/types/api'
 
+type PolicyStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
+
+const authStore = useAuthStore()
+const canManage = computed(() => authStore.canManageContent)
 const policies = ref<PolicyDocument[]>([])
 const loading = ref(false)
 const total = ref(0)
 const dialogVisible = ref(false)
+const uploadVisible = ref(false)
+const uploading = ref(false)
 const detailVisible = ref(false)
 const selectedPolicy = ref<PolicyDocument | null>(null)
 const editingId = ref<ApiId | null>(null)
+const selectedUploadFile = ref<File | null>(null)
 
 const query = reactive({
   current: 1,
@@ -135,7 +202,13 @@ const form = reactive({
   content: '',
   summary: '',
   documentVersion: 'v1.0',
-  status: 'PUBLISHED',
+  status: 'DRAFT' as PolicyStatus,
+})
+
+const uploadForm = reactive({
+  title: '',
+  documentVersion: 'v1.0',
+  status: 'DRAFT' as PolicyStatus,
 })
 
 async function load() {
@@ -147,6 +220,11 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+function search() {
+  query.current = 1
+  load()
 }
 
 function resetQuery() {
@@ -161,7 +239,7 @@ function resetForm() {
   form.content = ''
   form.summary = ''
   form.documentVersion = 'v1.0'
-  form.status = 'PUBLISHED'
+  form.status = 'DRAFT'
   editingId.value = null
 }
 
@@ -170,13 +248,21 @@ function openCreateDialog() {
   dialogVisible.value = true
 }
 
+function openUploadDialog() {
+  uploadForm.title = ''
+  uploadForm.documentVersion = 'v1.0'
+  uploadForm.status = 'DRAFT'
+  selectedUploadFile.value = null
+  uploadVisible.value = true
+}
+
 function openEditDialog(row: PolicyDocument) {
   editingId.value = row.id
   form.title = row.title
   form.content = row.content || ''
   form.summary = row.summary || ''
   form.documentVersion = row.documentVersion || 'v1.0'
-  form.status = row.status || 'DRAFT'
+  form.status = (row.status || 'DRAFT') as PolicyStatus
   dialogVisible.value = true
 }
 
@@ -201,8 +287,44 @@ async function handleSave() {
   await load()
 }
 
+async function handleUploadPolicy() {
+  if (!selectedUploadFile.value) {
+    ElMessage.warning('请选择制度文件')
+    return
+  }
+  uploading.value = true
+  try {
+    await uploadPolicy(selectedUploadFile.value, { ...uploadForm })
+    ElMessage.success('制度文件已上传并解析')
+    uploadVisible.value = false
+    await load()
+  } finally {
+    uploading.value = false
+  }
+}
+
+function handleUploadChange(file: UploadFile) {
+  selectedUploadFile.value = file.raw || null
+}
+
+function handleUploadRemove() {
+  selectedUploadFile.value = null
+}
+
+async function handleStatus(row: PolicyDocument, status: PolicyStatus) {
+  await updatePolicy(row.id, {
+    title: row.title,
+    content: row.content || '',
+    summary: row.summary || '',
+    documentVersion: row.documentVersion || 'v1.0',
+    status,
+  })
+  ElMessage.success(`状态已切换为${statusText(status)}`)
+  await load()
+}
+
 async function handleDelete(row: PolicyDocument) {
-  await ElMessageBox.confirm(`确认删除「${row.title}」？`, '删除制度', {
+  await ElMessageBox.confirm(`确认删除「${row.title}」吗？`, '删除制度', {
     type: 'warning',
     confirmButtonText: '删除',
     cancelButtonText: '取消',
@@ -239,9 +361,22 @@ onMounted(load)
   gap: 16px;
 }
 
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.table-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
 .table-header p {
   margin: 4px 0 0;
-  color: #6b7280;
+  color: #667085;
   font-size: 13px;
 }
 
@@ -252,6 +387,16 @@ onMounted(load)
 .filters :deep(.el-input),
 .filters :deep(.el-select) {
   width: 220px;
+}
+
+.upload-title {
+  color: #344054;
+  font-size: 15px;
+}
+
+.upload-tip {
+  color: #667085;
+  font-size: 12px;
 }
 
 h3 {

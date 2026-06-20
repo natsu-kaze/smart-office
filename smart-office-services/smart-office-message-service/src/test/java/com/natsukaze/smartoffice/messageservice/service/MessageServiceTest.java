@@ -1,6 +1,8 @@
 package com.natsukaze.smartoffice.messageservice.service;
 
 import com.natsukaze.smartoffice.api.message.dto.NoticeCreateCommand;
+import com.natsukaze.smartoffice.api.org.client.OrgEmployeeClient;
+import com.natsukaze.smartoffice.api.system.client.SystemUserClient;
 import com.natsukaze.smartoffice.common.enums.BusinessType;
 import com.natsukaze.smartoffice.messageservice.entity.MessageNotice;
 import com.natsukaze.smartoffice.messageservice.mapper.MessageNoticeMapper;
@@ -13,6 +15,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.AmqpException;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -32,11 +36,17 @@ class MessageServiceTest {
     @Mock
     private NoticeMessageProducer noticeMessageProducer;
 
+    @Mock
+    private OrgEmployeeClient orgEmployeeClient;
+
+    @Mock
+    private SystemUserClient systemUserClient;
+
     private MessageService messageService;
 
     @BeforeEach
     void setUp() {
-        messageService = new MessageService(noticeMapper, todoMapper, noticeMessageProducer);
+        messageService = new MessageService(noticeMapper, todoMapper, noticeMessageProducer, orgEmployeeClient, systemUserClient);
     }
 
     @Test
@@ -91,6 +101,36 @@ class MessageServiceTest {
         messageService.saveNotice(command);
 
         verify(noticeMapper, never()).insert(any(MessageNotice.class));
+    }
+
+    @Test
+    void saveNoticeDoesNotDeduplicateAnnouncementWithoutBusinessId() {
+        NoticeCreateCommand command = new NoticeCreateCommand(
+                1001L,
+                "Office announcement",
+                "Meeting at 10:00",
+                "ANNOUNCEMENT",
+                null
+        );
+
+        messageService.saveNotice(command);
+
+        MessageNotice notice = captureInsertedNotice();
+        assertThat(notice.getBusinessType()).isEqualTo(BusinessType.ANNOUNCEMENT);
+    }
+
+    @Test
+    void batchMarkReadUpdatesOnlyUserMessages() {
+        messageService.batchMarkRead(1001L, List.of(1L, 2L));
+
+        verify(noticeMapper).update(org.mockito.ArgumentMatchers.isNull(), any());
+    }
+
+    @Test
+    void batchDeleteDeletesOnlyUserMessages() {
+        messageService.batchDeleteMessage(1001L, List.of(1L, 2L));
+
+        verify(noticeMapper).delete(any());
     }
 
     private MessageNotice captureInsertedNotice() {

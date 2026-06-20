@@ -5,6 +5,7 @@ import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -14,7 +15,10 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 @Component
 public class GatewayAuthFilter implements GlobalFilter, Ordered {
@@ -23,10 +27,24 @@ public class GatewayAuthFilter implements GlobalFilter, Ordered {
     private static final String USER_ID_HEADER = "X-User-Id";
     private static final String USERNAME_HEADER = "X-Username";
     private static final String REAL_NAME_HEADER = "X-Real-Name";
+    private static final String ROLES_HEADER = "X-User-Roles";
+    private static final String PERMISSIONS_HEADER = "X-User-Permissions";
+    private static final String ADMIN_ROLE = "ADMIN";
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/auth/login",
             "/actuator/health",
             "/actuator/info"
+    );
+    private static final Map<String, String> READ_PERMISSIONS = Map.ofEntries(
+            Map.entry("/api/system/users", "sys:user:list"),
+            Map.entry("/api/system/roles", "sys:role:list"),
+            Map.entry("/api/system/menus", "sys:role:list"),
+            Map.entry("/api/org", "org:manage"),
+            Map.entry("/api/approvals", "approval:list"),
+            Map.entry("/api/messages", "message:list"),
+            Map.entry("/api/files", "file:list"),
+            Map.entry("/api/policies", "policy:list"),
+            Map.entry("/api/attendance", "attendance:list")
     );
 
     private final GatewayJwtService jwtService;
@@ -56,6 +74,12 @@ public class GatewayAuthFilter implements GlobalFilter, Ordered {
             if (userId == null) {
                 return unauthorized(exchange, "invalid token");
             }
+            List<String> roles = claimList(claims, "roles");
+            List<String> permissions = claimList(claims, "permissions");
+            String requiredPermission = requiredPermission(path, exchange.getRequest().getMethod());
+            if (requiredPermission != null && !roles.contains(ADMIN_ROLE) && !permissions.contains(requiredPermission)) {
+                return forbidden(exchange, "permission denied");
+            }
             return tokenStore.isActive(token)
                     .flatMap(active -> {
                         if (!active) {
@@ -66,10 +90,14 @@ public class GatewayAuthFilter implements GlobalFilter, Ordered {
                                     headers.remove(USER_ID_HEADER);
                                     headers.remove(USERNAME_HEADER);
                                     headers.remove(REAL_NAME_HEADER);
+                                    headers.remove(ROLES_HEADER);
+                                    headers.remove(PERMISSIONS_HEADER);
                                 })
                                 .header(USER_ID_HEADER, String.valueOf(userId))
                                 .header(USERNAME_HEADER, claims.getSubject())
                                 .header(REAL_NAME_HEADER, String.valueOf(claims.get("realName", String.class)))
+                                .header(ROLES_HEADER, String.join(",", roles))
+                                .header(PERMISSIONS_HEADER, String.join(",", permissions))
                                 .build();
                         return chain.filter(exchange.mutate().request(request).build());
                     });
@@ -93,6 +121,8 @@ public class GatewayAuthFilter implements GlobalFilter, Ordered {
                     headers.remove(USER_ID_HEADER);
                     headers.remove(USERNAME_HEADER);
                     headers.remove(REAL_NAME_HEADER);
+                    headers.remove(ROLES_HEADER);
+                    headers.remove(PERMISSIONS_HEADER);
                 })
                 .build();
         return exchange.mutate().request(request).build();
@@ -108,10 +138,65 @@ public class GatewayAuthFilter implements GlobalFilter, Ordered {
 
     private Mono<Void> unauthorized(ServerWebExchange exchange, String message) {
         exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+        return writeError(exchange, 401, message);
+    }
+
+    private Mono<Void> forbidden(ServerWebExchange exchange, String message) {
+        exchange.getResponse().setStatusCode(HttpStatus.FORBIDDEN);
+        return writeError(exchange, 403, message);
+    }
+
+    private Mono<Void> writeError(ServerWebExchange exchange, int code, String message) {
         exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
-        byte[] body = ("{\"code\":401,\"message\":\"" + message + "\",\"data\":null}")
+        byte[] body = ("{\"code\":" + code + ",\"message\":\"" + message + "\",\"data\":null}")
                 .getBytes(StandardCharsets.UTF_8);
         return exchange.getResponse()
                 .writeWith(Mono.just(exchange.getResponse().bufferFactory().wrap(body)));
+    }
+
+    private String requiredPermission(String path, HttpMethod method) {
+        if (path.startsWith("/api/auth")) {
+            return null;
+        }
+        if (path.startsWith("/api/system/users/profile")) {
+            return null;
+        }
+        if (path.startsWith("/api/system/users/") && path.endsWith("/roles")) {
+            return "sys:user:role";
+        }
+        if (path.startsWith("/api/system/roles/") && path.endsWith("/menus")) {
+            return "sys:role:menu";
+        }
+        if (path.startsWith("/api/system/roles") && !HttpMethod.GET.equals(method)) {
+            return "sys:role:save";
+        }
+        if (path.startsWith("/api/messages/announcements")) {
+            return "message:announcement:send";
+        }
+        if (path.startsWith("/api/files") && HttpMethod.DELETE.equals(method)) {
+            return "file:delete";
+        }
+        if (path.startsWith("/api/policies") && !HttpMethod.GET.equals(method)) {
+            return "policy:manage";
+        }
+        if (path.startsWith("/api/attendance/department-records")) {
+            return "attendance:department:list";
+        }
+        return READ_PERMISSIONS.entrySet().stream()
+                .filter(entry -> path.startsWith(entry.getKey()))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private List<String> claimList(Claims claims, String name) {
+        Object value = claims.get(name);
+        if (value instanceof Collection<?> collection) {
+            return collection.stream()
+                    .filter(Objects::nonNull)
+                    .map(String::valueOf)
+                    .toList();
+        }
+        return List.of();
     }
 }

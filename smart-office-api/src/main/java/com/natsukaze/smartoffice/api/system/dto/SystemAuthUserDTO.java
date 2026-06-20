@@ -11,6 +11,7 @@ public record SystemAuthUserDTO(
         String email,
         String avatar,
         Integer status,
-        List<String> roles
+        List<String> roles,
+        List<String> permissions
 ) {
 }

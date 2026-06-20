@@ -26,11 +26,34 @@ ON DUPLICATE KEY UPDATE update_time = CURRENT_TIMESTAMP;
 
 INSERT INTO sys_menu (id, parent_id, menu_name, menu_type, path, component, permission, icon, sort, visible, status)
 VALUES
-    (1, 0, 'System Management', 'CATALOG', '/system', NULL, NULL, 'setting', 1, 1, 1),
-    (2, 1, 'User Management', 'MENU', '/system/users', 'system/user/index', 'sys:user:list', 'user', 1, 1, 1),
-    (3, 0, 'Approval Center', 'CATALOG', '/approval', NULL, NULL, 'tickets', 2, 1, 1),
-    (4, 3, 'My Applications', 'MENU', '/approval/my', 'approval/my/index', 'approval:form:list', 'document', 1, 1, 1),
-    (5, 3, 'My Todos', 'MENU', '/approval/todo', 'approval/todo/index', 'approval:todo:list', 'todo', 2, 1, 1)
+    (1, 0, '工作台', 'MENU', '/dashboard', 'dashboard/index', 'dashboard:view', 'data-board', 1, 1, 1),
+    (10, 0, '系统管理', 'CATALOG', '/system', NULL, NULL, 'setting', 10, 1, 1),
+    (11, 10, '用户管理', 'MENU', '/system/users', 'system/user/index', 'sys:user:list', 'user', 1, 1, 1),
+    (12, 10, '角色权限', 'MENU', '/system/roles', 'system/role/index', 'sys:role:list', 'lock', 2, 1, 1),
+    (13, 11, '分配用户角色', 'BUTTON', NULL, NULL, 'sys:user:role', NULL, 1, 0, 1),
+    (14, 12, '维护角色', 'BUTTON', NULL, NULL, 'sys:role:save', NULL, 1, 0, 1),
+    (15, 12, '分配角色菜单', 'BUTTON', NULL, NULL, 'sys:role:menu', NULL, 2, 0, 1),
+    (20, 0, '组织架构', 'MENU', '/org', 'org/index', 'org:manage', 'office-building', 20, 1, 1),
+    (30, 0, '审批中心', 'MENU', '/approvals', 'approval/index', 'approval:list', 'tickets', 30, 1, 1),
+    (40, 0, '消息中心', 'MENU', '/messages', 'message/index', 'message:list', 'bell', 40, 1, 1),
+    (41, 40, '发布公告', 'BUTTON', NULL, NULL, 'message:announcement:send', NULL, 1, 0, 1),
+    (50, 0, '文件中心', 'MENU', '/files', 'file/index', 'file:list', 'folder', 50, 1, 1),
+    (51, 50, '删除文件', 'BUTTON', NULL, NULL, 'file:delete', NULL, 1, 0, 1),
+    (60, 0, '制度文档', 'MENU', '/policies', 'policy/index', 'policy:list', 'document', 60, 1, 1),
+    (61, 60, '维护制度', 'BUTTON', NULL, NULL, 'policy:manage', NULL, 1, 0, 1),
+    (70, 0, '考勤打卡', 'MENU', '/attendance', 'attendance/index', 'attendance:list', 'clock', 70, 1, 1),
+    (71, 70, '部门考勤', 'BUTTON', NULL, NULL, 'attendance:department:list', NULL, 1, 0, 1)
+ON DUPLICATE KEY UPDATE update_time = CURRENT_TIMESTAMP;
+
+INSERT INTO sys_role_menu (id, role_id, menu_id)
+VALUES
+    (1, 1, 1), (2, 1, 10), (3, 1, 11), (4, 1, 12), (5, 1, 13), (6, 1, 14), (7, 1, 15),
+    (8, 1, 20), (9, 1, 30), (10, 1, 40), (11, 1, 41), (12, 1, 50), (13, 1, 51),
+    (14, 1, 60), (15, 1, 61), (16, 1, 70), (17, 1, 71),
+    (18, 2, 1), (19, 2, 20), (20, 2, 30), (21, 2, 40), (22, 2, 41), (23, 2, 50),
+    (24, 2, 60), (25, 2, 61), (26, 2, 70), (27, 2, 71),
+    (28, 3, 1), (29, 3, 30), (30, 3, 40), (31, 3, 50), (32, 3, 60), (33, 3, 70),
+    (34, 4, 1), (35, 4, 30), (36, 4, 40), (37, 4, 50), (38, 4, 60), (39, 4, 70)
 ON DUPLICATE KEY UPDATE update_time = CURRENT_TIMESTAMP;
 
 INSERT INTO org_company (id, company_code, company_name, contact_name, contact_phone, address, status)

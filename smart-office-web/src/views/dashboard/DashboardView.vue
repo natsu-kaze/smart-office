@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard">
     <el-row :gutter="16">
-      <el-col :md="6" :sm="12" :xs="24" v-for="item in stats" :key="item.label">
+      <el-col v-for="item in stats" :key="item.label" :md="6" :sm="12" :xs="24">
         <div class="stat-card">
           <span>{{ item.label }}</span>
           <strong>{{ item.value }}</strong>
@@ -35,10 +35,21 @@ const unreadCount = ref(0)
 const todoCount = ref(0)
 const today = ref<AttendanceToday>({})
 
+const statusText: Record<string, string> = {
+  NORMAL: '正常',
+  LATE: '迟到',
+  EARLY_LEAVE: '早退',
+  MISSING: '缺卡',
+  LEAVE: '请假',
+  ABNORMAL: '异常',
+}
+
 const attendanceText = computed(() => {
   if (!today.value.checkInTime) return '未打卡'
-  if (!today.value.checkOutTime) return `已上班打卡（${today.value.checkInStatus || 'NORMAL'}）`
-  return `${today.value.checkInStatus || '-'} / ${today.value.checkOutStatus || '-'}`
+  if (!today.value.checkOutTime) {
+    return `已上班打卡（${formatStatus(today.value.checkInStatus)}）`
+  }
+  return `${formatStatus(today.value.checkInStatus)} / ${formatStatus(today.value.checkOutStatus)}`
 })
 
 const stats = computed(() => [
@@ -57,6 +68,11 @@ async function refresh() {
   unreadCount.value = unread
   todoCount.value = todos
   today.value = attendance
+}
+
+function formatStatus(status?: string) {
+  if (!status) return '-'
+  return statusText[status] || status
 }
 
 onMounted(refresh)

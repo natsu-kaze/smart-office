@@ -19,7 +19,7 @@ smart-office
    ├─ smart-office-message-service  通知与待办
    ├─ smart-office-file-service     文件记录
    ├─ smart-office-search-service   制度文档检索
-   └─ smart-office-ai-service       AI 占位，后续独立增强
+   └─ smart-office-ai-service       AI 办公助手，可降级接口与模型增强预留
 ```
 
 ## 2. 服务端口
@@ -119,6 +119,11 @@ gateway 负责统一入口和身份透传：
 * attendance-service 已接入 XXL-JOB 执行器，支持每日缺卡结算、月度统计任务和考勤异常员工通知。
 * org-service 已补内部活跃员工 userId 列表接口，供 attendance-service 通过 Feign 获取结算对象。
 * search-service 已接入 Elasticsearch，制度文档新增、修改、删除会同步索引，带关键字检索优先走 ES，失败时降级 MySQL LIKE。
+* ai-service 已开始独立增强：
+  * 使用 `smart_office_ai` 独立库保存 AI 会话和消息。
+  * 通过 `smart-office-api` 调 search-service 内部制度文档检索接口。
+  * 暴露 `/api/ai/chat`、`/api/ai/policy-qa`、`/api/ai/approval-summary`、`/api/ai/approval-draft`、`/api/ai/approval-risk`。
+  * 当前先使用规则与检索降级响应，后续再接入 Spring AI 和真实模型。
 
 已验证：
 
@@ -168,6 +173,7 @@ gateway 负责统一入口和身份透传：
   * manager 审批后审批单进入 `PROCESSING`，并生成 finance 财务待办。
   * manager 重复审批同一审批单会被拒绝。
   * finance 审批后审批单最终变为 `APPROVED`。
+* `scripts/smoke-p1-ai-service.ps1` 已固化 ai-service 网关冒烟脚本，待当前代码的 search-service 与 ai-service 同时启动后执行。
 
 ## 7. 推荐启动顺序
 
@@ -205,6 +211,7 @@ npm run test:e2e:microservice
 
 ## 8. 后续顺序
 
-1. 提交 smart-office-web 前端体验收尾：制度文档检索、审批详情、考勤记录页面，以及对应 Playwright microservice 冒烟。
-2. ai-service 独立迁移，保持 AI 不阻塞主业务流程。
-3. 后续增强审批超时扫描、Redisson 防重复审批、文件上传限制、角色/菜单管理等非主链路能力。
+1. 启动当前代码的 search-service 与 ai-service，执行 `scripts/smoke-p1-ai-service.ps1`。
+2. 接入 Spring AI、模型配置、Chat Client 和流式输出。
+3. 补前端 AI 助手页面：聊天、制度问答、智能填单、审批辅助信息展示。
+4. 后续增强审批超时扫描、Redisson 防重复审批、文件上传限制、角色/菜单管理等非主链路能力。

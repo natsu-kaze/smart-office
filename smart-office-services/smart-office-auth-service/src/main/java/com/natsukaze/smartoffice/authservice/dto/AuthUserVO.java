@@ -22,4 +22,6 @@ public class AuthUserVO {
     private String avatar;
 
     private List<String> roles;
+
+    private List<String> permissions;
 }

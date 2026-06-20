@@ -1,13 +1,20 @@
 package com.natsukaze.smartoffice.messageservice.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.natsukaze.smartoffice.api.message.dto.NoticeCreateCommand;
 import com.natsukaze.smartoffice.api.message.dto.TodoCreateCommand;
+import com.natsukaze.smartoffice.api.org.client.OrgEmployeeClient;
+import com.natsukaze.smartoffice.api.system.client.SystemUserClient;
+import com.natsukaze.smartoffice.api.system.dto.SystemAuthUserDTO;
+import com.natsukaze.smartoffice.common.core.ErrorCode;
 import com.natsukaze.smartoffice.common.core.PageResult;
+import com.natsukaze.smartoffice.common.core.Result;
 import com.natsukaze.smartoffice.common.enums.BusinessType;
 import com.natsukaze.smartoffice.common.enums.TodoStatus;
 import com.natsukaze.smartoffice.common.exception.BusinessException;
+import com.natsukaze.smartoffice.messageservice.dto.AnnouncementCreateRequest;
 import com.natsukaze.smartoffice.messageservice.dto.MessagePageQuery;
 import com.natsukaze.smartoffice.messageservice.dto.TodoPageQuery;
 import com.natsukaze.smartoffice.messageservice.entity.MessageNotice;
@@ -15,6 +22,7 @@ import com.natsukaze.smartoffice.messageservice.entity.MessageTodo;
 import com.natsukaze.smartoffice.messageservice.mapper.MessageNoticeMapper;
 import com.natsukaze.smartoffice.messageservice.mapper.MessageTodoMapper;
 import com.natsukaze.smartoffice.messageservice.mq.NoticeMessageProducer;
+import com.natsukaze.smartoffice.messageservice.vo.AnnouncementSendVO;
 import com.natsukaze.smartoffice.messageservice.vo.MessageNoticeVO;
 import com.natsukaze.smartoffice.messageservice.vo.MessageTodoVO;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -37,12 +46,18 @@ public class MessageService {
 
     private final NoticeMessageProducer noticeMessageProducer;
 
+    private final OrgEmployeeClient orgEmployeeClient;
+
+    private final SystemUserClient systemUserClient;
+
     public PageResult<MessageNoticeVO> myMessages(Long userId, MessagePageQuery query) {
         LambdaQueryWrapper<MessageNotice> wrapper = new LambdaQueryWrapper<MessageNotice>()
                 .eq(MessageNotice::getUserId, userId)
                 .eq(query.getReadStatus() != null, MessageNotice::getReadStatus, query.getReadStatus())
                 .eq(StringUtils.hasText(query.getBusinessType()), MessageNotice::getBusinessType,
                         BusinessType.ofNullable(query.getBusinessType()))
+                .ne(StringUtils.hasText(query.getExcludeBusinessType()), MessageNotice::getBusinessType,
+                        BusinessType.ofNullable(query.getExcludeBusinessType()))
                 .orderByDesc(MessageNotice::getCreateTime);
         Page<MessageNotice> page = noticeMapper.selectPage(new Page<>(query.getCurrent(), query.getSize()), wrapper);
         return PageResult.from(page.convert(this::toNoticeVO));
@@ -63,9 +78,26 @@ public class MessageService {
     }
 
     @Transactional
+    public void batchMarkRead(Long userId, List<Long> ids) {
+        noticeMapper.update(null, new UpdateWrapper<MessageNotice>()
+                .eq("user_id", userId)
+                .in("id", ids)
+                .eq("read_status", 0)
+                .set("read_status", 1)
+                .set("read_time", LocalDateTime.now()));
+    }
+
+    @Transactional
     public void deleteMessage(Long userId, Long id) {
         requireNotice(userId, id);
         noticeMapper.deleteById(id);
+    }
+
+    @Transactional
+    public void batchDeleteMessage(Long userId, List<Long> ids) {
+        noticeMapper.delete(new LambdaQueryWrapper<MessageNotice>()
+                .eq(MessageNotice::getUserId, userId)
+                .in(MessageNotice::getId, ids));
     }
 
     public PageResult<MessageTodoVO> myTodos(Long userId, TodoPageQuery query) {
@@ -132,6 +164,28 @@ public class MessageService {
     }
 
     @Transactional
+    public AnnouncementSendVO publishAnnouncement(Long publisherId, String username, AnnouncementCreateRequest request) {
+        ensureMessageManager(username);
+        List<Long> recipientIds = resolveAnnouncementRecipients(request).stream()
+                .filter(userId -> userId != null && !userId.equals(publisherId))
+                .distinct()
+                .toList();
+        if (recipientIds.isEmpty()) {
+            throw new BusinessException("announcement recipients not found");
+        }
+        recipientIds.forEach(userId -> saveNotice(new NoticeCreateCommand(
+                userId,
+                request.getTitle(),
+                request.getContent(),
+                BusinessType.ANNOUNCEMENT.getCode(),
+                null
+        )));
+        return AnnouncementSendVO.builder()
+                .recipientCount(recipientIds.size())
+                .build();
+    }
+
+    @Transactional
     public void saveNotice(NoticeCreateCommand command) {
         if (noticeExists(command)) {
             log.info("Duplicate notice ignored. userId={}, businessType={}, businessId={}, title={}",
@@ -149,6 +203,9 @@ public class MessageService {
     }
 
     private boolean noticeExists(NoticeCreateCommand command) {
+        if (command.businessId() == null) {
+            return false;
+        }
         LambdaQueryWrapper<MessageNotice> wrapper = new LambdaQueryWrapper<MessageNotice>()
                 .eq(MessageNotice::getUserId, command.userId())
                 .eq(MessageNotice::getTitle, command.title());
@@ -164,6 +221,48 @@ public class MessageService {
             wrapper.eq(MessageNotice::getBusinessId, command.businessId());
         }
         return noticeMapper.selectCount(wrapper) > 0;
+    }
+
+    private List<Long> resolveAnnouncementRecipients(AnnouncementCreateRequest request) {
+        return switch (request.getTargetType()) {
+            case "ALL" -> requireUserIds(orgEmployeeClient.listActiveUserIds());
+            case "DEPARTMENT" -> requireDepartmentIdAndUsers(request.getDepartmentId(), false, false);
+            case "SUB_DEPARTMENTS" -> requireDepartmentIdAndUsers(request.getDepartmentId(), true, false);
+            case "MANAGERS" -> request.getDepartmentId() == null
+                    ? requireUserIds(orgEmployeeClient.listLeaderUserIds())
+                    : requireDepartmentIdAndUsers(request.getDepartmentId(), true, true);
+            default -> throw new BusinessException("invalid announcement target type");
+        };
+    }
+
+    private List<Long> requireDepartmentIdAndUsers(Long departmentId, boolean subtree, boolean leaders) {
+        if (departmentId == null) {
+            throw new BusinessException("department is required");
+        }
+        if (leaders) {
+            return requireUserIds(orgEmployeeClient.listLeaderUserIdsByDepartmentSubtree(departmentId));
+        }
+        return requireUserIds(subtree
+                ? orgEmployeeClient.listUserIdsByDepartmentSubtree(departmentId)
+                : orgEmployeeClient.listUserIdsByDepartmentId(departmentId));
+    }
+
+    private List<Long> requireUserIds(Result<List<Long>> result) {
+        if (result == null || result.code() != ErrorCode.SUCCESS.getCode() || result.data() == null) {
+            throw new BusinessException("announcement recipients not found");
+        }
+        return result.data();
+    }
+
+    private void ensureMessageManager(String username) {
+        Result<SystemAuthUserDTO> result = systemUserClient.getByUsername(username);
+        if (result == null || result.code() != ErrorCode.SUCCESS.getCode() || result.data() == null) {
+            throw new BusinessException("user not found");
+        }
+        List<String> roles = result.data().roles();
+        if (roles == null || roles.stream().noneMatch(role -> "ADMIN".equals(role) || "MANAGER".equals(role))) {
+            throw new BusinessException("permission denied");
+        }
     }
 
     private void finishTodo(MessageTodo todo) {

@@ -2,11 +2,15 @@ package com.natsukaze.smartoffice.fileservice.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.natsukaze.smartoffice.common.core.PageQuery;
+import com.natsukaze.smartoffice.api.system.client.SystemUserClient;
+import com.natsukaze.smartoffice.api.system.dto.SystemAuthUserDTO;
+import com.natsukaze.smartoffice.common.core.ErrorCode;
 import com.natsukaze.smartoffice.common.core.PageResult;
+import com.natsukaze.smartoffice.common.core.Result;
 import com.natsukaze.smartoffice.common.enums.BusinessType;
 import com.natsukaze.smartoffice.common.exception.BusinessException;
 import com.natsukaze.smartoffice.fileservice.dto.FileRecordCreateRequest;
+import com.natsukaze.smartoffice.fileservice.dto.FileRecordPageQuery;
 import com.natsukaze.smartoffice.fileservice.entity.FileRecord;
 import com.natsukaze.smartoffice.fileservice.config.MinioProperties;
 import com.natsukaze.smartoffice.fileservice.mapper.FileRecordMapper;
@@ -21,6 +25,7 @@ import io.minio.RemoveObjectArgs;
 import io.minio.StatObjectArgs;
 import io.minio.http.Method;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
@@ -30,11 +35,13 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class FileRecordService {
 
     private final FileRecordMapper fileRecordMapper;
@@ -42,6 +49,8 @@ public class FileRecordService {
     private final MinioClient minioClient;
 
     private final MinioProperties minioProperties;
+
+    private final SystemUserClient systemUserClient;
 
     @Transactional
     public FileRecordVO create(Long uploaderId, FileRecordCreateRequest request) {
@@ -73,6 +82,7 @@ public class FileRecordService {
         String contentType = StringUtils.hasText(file.getContentType())
                 ? file.getContentType()
                 : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        validateUpload(file, contentType);
 
         try {
             ensureBucket();
@@ -105,11 +115,19 @@ public class FileRecordService {
         return toVO(requireFile(id));
     }
 
-    public PageResult<FileRecordVO> myFiles(Long uploaderId, PageQuery query) {
+    public PageResult<FileRecordVO> myFiles(Long uploaderId, FileRecordPageQuery query) {
+        BusinessType businessType = BusinessType.ofNullable(query.getBusinessType());
         Page<FileRecord> page = fileRecordMapper.selectPage(
                 new Page<>(query.getCurrent(), query.getSize()),
                 new LambdaQueryWrapper<FileRecord>()
                         .eq(FileRecord::getUploaderId, uploaderId)
+                        .eq(businessType != null, FileRecord::getBusinessType, businessType)
+                        .and(StringUtils.hasText(query.getKeyword()), w -> w
+                                .like(FileRecord::getOriginalName, query.getKeyword())
+                                .or()
+                                .like(FileRecord::getContentType, query.getKeyword())
+                                .or()
+                                .like(FileRecord::getObjectKey, query.getKeyword()))
                         .orderByDesc(FileRecord::getCreateTime));
         return PageResult.from(page.convert(this::toVO));
     }
@@ -147,8 +165,11 @@ public class FileRecordService {
     }
 
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long operatorUserId, String username, Long id) {
         FileRecord record = requireFile(id);
+        if (!operatorUserId.equals(record.getUploaderId()) && !hasRole(username, "ADMIN")) {
+            throw new BusinessException("permission denied");
+        }
         if (StringUtils.hasText(record.getUrl()) && record.getUrl().startsWith("minio://")) {
             try {
                 minioClient.removeObject(RemoveObjectArgs.builder()
@@ -156,10 +177,34 @@ public class FileRecordService {
                         .object(record.getObjectKey())
                         .build());
             } catch (Exception ex) {
-                throw new BusinessException("delete file from minio failed");
+                log.warn("Delete file object from minio failed, deleting metadata anyway. fileId={}, bucket={}, objectKey={}",
+                        id, record.getBucket(), record.getObjectKey(), ex);
             }
         }
         fileRecordMapper.deleteById(id);
+    }
+
+    private boolean hasRole(String username, String roleCode) {
+        Result<SystemAuthUserDTO> result = systemUserClient.getByUsername(username);
+        return result != null
+                && result.code() == ErrorCode.SUCCESS.getCode()
+                && result.data() != null
+                && result.data().roles() != null
+                && result.data().roles().contains(roleCode);
+    }
+
+    private void validateUpload(MultipartFile file, String contentType) {
+        long maxBytes = minioProperties.getMaxSizeMb() * 1024 * 1024;
+        if (file.getSize() > maxBytes) {
+            throw new BusinessException("file size exceeds " + minioProperties.getMaxSizeMb() + "MB");
+        }
+        boolean allowed = Arrays.stream(minioProperties.getAllowedContentTypes().split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .anyMatch(allowedType -> allowedType.equalsIgnoreCase(contentType));
+        if (!allowed) {
+            throw new BusinessException("file type is not allowed");
+        }
     }
 
     private FileRecord requireFile(Long id) {

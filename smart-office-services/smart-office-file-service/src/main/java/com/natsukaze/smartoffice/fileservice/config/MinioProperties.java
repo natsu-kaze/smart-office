@@ -16,4 +16,8 @@ public class MinioProperties {
     private String bucket = "smart-office-files";
 
     private int previewExpiryMinutes = 30;
+
+    private long maxSizeMb = 20;
+
+    private String allowedContentTypes = "application/pdf,image/png,image/jpeg,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 }

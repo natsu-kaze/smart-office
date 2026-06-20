@@ -213,6 +213,21 @@ public class ApprovalService {
                 .toList();
     }
 
+    public int scanTimeoutApprovals(int timeoutHours) {
+        int hours = timeoutHours <= 0 ? 24 : timeoutHours;
+        LocalDateTime deadline = LocalDateTime.now().minusHours(hours);
+        List<ApprovalForm> forms = formMapper.selectList(new LambdaQueryWrapper<ApprovalForm>()
+                .in(ApprovalForm::getStatus, ApprovalStatus.PENDING, ApprovalStatus.PROCESSING)
+                .isNotNull(ApprovalForm::getCurrentApproverId)
+                .le(ApprovalForm::getSubmittedAt, deadline));
+        forms.forEach(form -> notifyUser(
+                form.getCurrentApproverId(),
+                "Approval timeout reminder",
+                form.getTitle() + " has been pending for over " + hours + " hours",
+                form.getId()));
+        return forms.size();
+    }
+
     private LambdaQueryWrapper<ApprovalForm> baseQuery(ApprovalPageQuery query) {
         return new LambdaQueryWrapper<ApprovalForm>()
                 .eq(StringUtils.hasText(query.getApprovalType()), ApprovalForm::getApprovalType,

@@ -29,11 +29,19 @@ public class OfficeUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("user not found");
         }
         SystemAuthUserDTO user = result.data();
-        List<SimpleGrantedAuthority> authorities = CollectionUtils.isEmpty(user.roles())
+        List<SimpleGrantedAuthority> roleAuthorities = CollectionUtils.isEmpty(user.roles())
                 ? List.of(new SimpleGrantedAuthority(ROLE_PREFIX + "EMPLOYEE"))
                 : user.roles().stream()
                 .map(role -> new SimpleGrantedAuthority(ROLE_PREFIX + role))
                 .toList();
+        List<SimpleGrantedAuthority> permissionAuthorities = CollectionUtils.isEmpty(user.permissions())
+                ? List.of()
+                : user.permissions().stream()
+                .map(SimpleGrantedAuthority::new)
+                .toList();
+        List<SimpleGrantedAuthority> authorities = new java.util.ArrayList<>();
+        authorities.addAll(roleAuthorities);
+        authorities.addAll(permissionAuthorities);
         return new UserPrincipal(user, List.copyOf(authorities));
     }
 }

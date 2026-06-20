@@ -11,4 +11,6 @@ public class MessagePageQuery extends PageQuery {
     private Integer readStatus;
 
     private String businessType;
+
+    private String excludeBusinessType;
 }
