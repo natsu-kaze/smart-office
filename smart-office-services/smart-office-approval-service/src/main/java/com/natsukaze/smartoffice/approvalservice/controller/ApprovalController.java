@@ -3,14 +3,17 @@ package com.natsukaze.smartoffice.approvalservice.controller;
 import com.natsukaze.smartoffice.approvalservice.dto.ApprovalActionRequest;
 import com.natsukaze.smartoffice.approvalservice.dto.ApprovalFormRequest;
 import com.natsukaze.smartoffice.approvalservice.dto.ApprovalPageQuery;
+import com.natsukaze.smartoffice.approvalservice.dto.ApprovalRuleRequest;
 import com.natsukaze.smartoffice.approvalservice.service.ApprovalService;
 import com.natsukaze.smartoffice.approvalservice.vo.ApprovalFormVO;
 import com.natsukaze.smartoffice.approvalservice.vo.ApprovalRecordVO;
+import com.natsukaze.smartoffice.approvalservice.vo.ApprovalRuleVO;
 import com.natsukaze.smartoffice.common.core.PageResult;
 import com.natsukaze.smartoffice.common.core.Result;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -77,6 +80,13 @@ public class ApprovalController {
         return Result.success(approvalService.close(userId, id, request == null ? new ApprovalActionRequest() : request));
     }
 
+    @DeleteMapping("/{id}")
+    public Result<Void> deleteDraft(@RequestHeader(USER_ID_HEADER) Long userId,
+                                     @PathVariable Long id) {
+        approvalService.deleteDraft(userId, id);
+        return Result.success();
+    }
+
     @GetMapping("/{id}")
     public Result<ApprovalFormVO> detail(@PathVariable Long id) {
         return Result.success(approvalService.detail(id));
@@ -102,5 +112,26 @@ public class ApprovalController {
     @GetMapping("/{id}/timeline")
     public Result<List<ApprovalRecordVO>> timeline(@PathVariable Long id) {
         return Result.success(approvalService.records(id));
+    }
+
+    @GetMapping("/rules")
+    public Result<List<ApprovalRuleVO>> rules() {
+        return Result.success(approvalService.listRules());
+    }
+
+    @PostMapping("/rules")
+    public Result<ApprovalRuleVO> createRule(@Valid @RequestBody ApprovalRuleRequest request) {
+        return Result.success(approvalService.saveRule(request));
+    }
+
+    @PutMapping("/rules/{id}")
+    public Result<ApprovalRuleVO> updateRule(@PathVariable Long id, @Valid @RequestBody ApprovalRuleRequest request) {
+        return Result.success(approvalService.updateRule(id, request));
+    }
+
+    @DeleteMapping("/rules/{id}")
+    public Result<Void> deleteRule(@PathVariable Long id) {
+        approvalService.deleteRule(id);
+        return Result.success();
     }
 }

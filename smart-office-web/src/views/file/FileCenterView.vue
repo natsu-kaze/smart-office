@@ -55,7 +55,7 @@
         <img v-if="isImagePreview" :src="previewUrl" :alt="previewFile?.originalName" class="preview-image" />
         <iframe v-else :src="previewUrl" class="preview-frame" title="文件预览" />
       </div>
-      <el-empty v-else description="暂无可预览地址" />
+      <el-empty v-else description="无法获取文件预览地址，请确认文件存储服务（MinIO）是否已启动，或尝试下载文件后查看" />
       <template #footer>
         <el-button @click="previewVisible = false">关闭</el-button>
         <el-button :disabled="!previewUrl" @click="openPreviewInNewWindow">新窗口打开</el-button>
@@ -129,13 +129,14 @@ async function handleNativeFileChange(event: Event) {
 }
 
 async function handlePreview(row: FileRecord) {
+  previewFile.value = row
   try {
-    previewFile.value = row
     previewUrl.value = await getFilePreviewUrl(row.id)
     previewVisible.value = true
   } catch {
-    previewFile.value = undefined
     previewUrl.value = ''
+    previewVisible.value = true
+    ElMessage.warning('无法生成文件预览地址，请确认文件存储服务是否正常运行')
   }
 }
 

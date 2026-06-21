@@ -83,7 +83,7 @@ function Start-ServiceJar {
         "set NACOS_SERVER_ADDR=127.0.0.1:8951",
         "set MYSQL_PORT=3306",
         "set MYSQL_PASSWORD=123456",
-        "set REDIS_PORT=6380",
+        "set REDIS_PORT=6379",
         "set RABBITMQ_PORT=5673",
         "set ELASTICSEARCH_URIS=http://127.0.0.1:9200",
         "set SEARCH_ES_ENABLED=true",

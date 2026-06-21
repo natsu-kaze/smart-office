@@ -113,6 +113,7 @@ public class MessageService {
                 .id(notice.getId())
                 .title(notice.getTitle())
                 .content(notice.getContent())
+                .senderName(notice.getSenderName())
                 .businessType(notice.getBusinessType() == null ? null : notice.getBusinessType().getCode())
                 .businessId(notice.getBusinessId())
                 .readStatus(notice.getReadStatus())

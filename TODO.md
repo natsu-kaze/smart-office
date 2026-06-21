@@ -1,5 +1,26 @@
 # TODO
 
+## 当前修正记录（2026-06-22）
+
+* [x] 审批规则增强：部门范围、优先级排序、申请人角色过滤、超时自动处理（AUTO_APPROVE/AUTO_REJECT/ESCALATE）、或签支持（| 分隔同步骤审批人）
+* [x] 审批规则新增 TimeoutAction 枚举，审批表单新增 name/priority/applicantRoleCode/deptId/timeoutHours/timeoutAction 字段
+* [x] 考勤打卡顺序校验：checkOut 检查 checkIn 先完成，checkIn 检查 checkOut 未完成
+* [x] 考勤打卡确认弹窗：显示当前时间、可选备注，不再单纯点一下
+* [x] 制度文档视图分离：浏览模式 `/policies`（所有用户）+ 管理模式 `/policies/manage`（需 policy:manage 权限）
+* [x] 消息/公告优化：公告发布者可见自己公告、senderName 显示发布者、时间格式化（去 T）、未读/已读分类分页、待办时间格式化
+* [x] 公告发布后端去 ADMIN/MANAGER 硬编码角色校验，改由网关 RBAC 控制 message:announcement:send 权限
+* [x] 权限管理修复：el-tree check-strictly 父子独立控制、SystemPermissionService 去硬编码 DEFAULT_ROLE_PERMISSIONS 覆盖
+* [x] 新增用户创建功能：POST /api/system/users、UserCreateRequest DTO、前端创建用户弹窗
+* [x] 仪表盘增强：请假感知（显示"请假中"而非"未打卡"）、月度考勤概览卡片、状态颜色区分、加载状态
+* [x] 单体 ApprovalService fillForm 补遗漏的 leaveStartDate/leaveEndDate 赋值
+* [x] message_notice 表新增 sender_name 列
+* [x] .gitignore 新增 .claude/ 忽略
+
+已验证：
+* [x] `mvn test`（14/14 模块通过）
+* [x] `npm run build`（前端构建成功）
+* [x] curl API 冒烟：创建用户、权限独立控制、公告发布者可见、senderName 显示、员工发公告
+
 ## 当前修正记录（2026-06-20）
 
 * [x] 文件上传补充大小和类型限制：默认 20MB，白名单覆盖 PDF、图片、文本、Markdown、docx。
@@ -22,6 +43,21 @@
 * [x] auth-service 登录态补充 `permissions`，JWT 写入角色与权限声明。
 * [x] gateway 增加路径级权限拦截，覆盖用户/角色、公告、文件删除、制度维护、部门考勤等接口。
 * [x] smart-office-web 新增角色权限页，侧边栏与路由守卫改为按角色/菜单权限展示和拦截。
+* [x] system-service 修复用户角色/角色菜单重新分配时逻辑删除导致的唯一键冲突，角色保存不再只返回 `system error`。
+* [x] system-service 为 `ADMIN / MANAGER / EMPLOYEE / FINANCE` 补充默认权限兜底，避免角色菜单历史数据漂移导致非 admin 登录后 403。
+* [x] gateway 调整文件删除权限为基础文件访问，具体是否可删继续交给 file-service 按上传者或管理员校验。
+* [x] system-service 新增 `/api/system/users/options` 用户选项接口，供组织架构部门主管下拉使用；gateway 按 `org:manage` 放行，避免 manager 访问组织架构时被用户管理权限拦截。
+* [x] attendance-service 部门考勤主管部门判断改为从 org-service 获取员工部门，主管未传部门时默认查询本人部门。
+* [x] common 全局异常补充唯一约束冲突提示，避免数据库唯一键异常被吞成模糊系统错误。
+* [x] smart-office-web 个人中心头像支持 PNG / JPG 上传，上传后自动写入个人资料。
+* [x] file-service 头像上传改为 `AVATAR` 业务类型，文件中心默认列表隐藏头像文件，并兼容隐藏历史无业务类型的图片头像记录。
+* [x] smart-office-web 角色权限页补充菜单权限/按钮权限说明，并对旧英文菜单名做中文展示映射。
+* [x] smart-office-web 审批草稿支持编辑；请假单补充请假日期，草稿可保存或保存并提交。
+* [x] approval-service 请假审批通过后调用 attendance-service，把请假日期范围写入考勤记录。
+* [x] attendance-service 补充内部请假标记接口，请假日期按 `LEAVE` 状态写入记录并刷新月度汇总。
+* [x] OpenFeign 接入 Sentinel fallbackFactory 和 Nacos 共享 Sentinel 配置，核心服务编译通过。
+* [x] smart-office-web 组织架构部门主管从手填 ID 改为用户下拉选择，并在用户管理表格展示用户 ID。
+* [x] smart-office-web 考勤状态分布改为按状态总数计算占比，部门记录切换后图表不再被单个状态撑满。
 
 已验证：
 
@@ -33,7 +69,19 @@
 * [x] `mvn -pl smart-office-services/smart-office-file-service,smart-office-services/smart-office-search-service -am -DskipTests package`
 * [x] `mvn -pl smart-office-services/smart-office-system-service,smart-office-services/smart-office-approval-service -am test`
 * [x] `mvn -pl smart-office-services/smart-office-gateway,smart-office-services/smart-office-auth-service,smart-office-services/smart-office-system-service -am test`
+* [x] `mvn -pl smart-office-services/smart-office-approval-service,smart-office-services/smart-office-attendance-service,smart-office-services/smart-office-gateway,smart-office-services/smart-office-auth-service,smart-office-services/smart-office-system-service -am test`
+* [x] `mvn test`
 * [x] `npm run build`（smart-office-web）
+* [x] `mvn -pl smart-office-services/smart-office-file-service -am test`
+* [x] `mvn -pl smart-office-services/smart-office-file-service -am -DskipTests package`
+* [x] `mvn -pl smart-office-services/smart-office-system-service,smart-office-services/smart-office-gateway -am test`
+* [x] `mvn -pl smart-office-services/smart-office-system-service,smart-office-services/smart-office-gateway -am -DskipTests package`
+* [x] `mvn -pl smart-office-services/smart-office-attendance-service -am test`
+* [x] `mvn -pl smart-office-services/smart-office-attendance-service -am -DskipTests package`
+* [x] 网关接口验证：头像上传返回 `businessType=AVATAR`，默认文件中心列表不再显示新头像和历史无类型图片头像。
+* [x] 网关接口验证：`employee/123456` 可访问工作台依赖的审批、消息、文件、制度、考勤接口；`manager/123456` 可访问组织架构、公告、部门考勤接口。
+* [x] Edge headless Playwright 验证：employee 访问工作台、审批、消息、文件、制度、考勤、个人中心不再 403；manager 访问组织架构和主管功能页面不再 403。
+* [x] Edge headless Playwright 验证：用户管理显示用户 ID，组织架构部门主管可下拉选择，部门考勤状态分布比例稳定。
 * [x] Edge headless Playwright 冒烟：登录、文件中心隐藏对象 Key / 业务类型、消息中心公告入口与接收范围、制度维护入口可见性。
 * [x] Edge headless Playwright 冒烟：管理员可见部门考勤看板和消息批量按钮；普通员工不可见部门记录入口。
 * [x] employee token 直接请求部门考勤接口返回 `permission denied`。
@@ -42,7 +90,7 @@
 下一步建议：
 
 1. 补操作审计日志：记录登录、角色授权、制度维护、文件删除、审批处理等关键动作。
-2. 给公告发布补独立冒烟脚本，覆盖实际发送到主管、部门及下级的接收人数。
+2. 给公告发布、草稿编辑、头像上传、请假同步考勤补独立冒烟脚本。
 3. 给考勤补后端聚合接口，减少前端为看板额外拉取多次列表。
 4. 做一次 Docker 中间件恢复后的完整网关联调和 Playwright 冒烟。
 
@@ -373,7 +421,7 @@
 * [x] 早于 18:00 下班打卡为早退
 * [x] 未上班打卡为上班缺卡
 * [x] 未下班打卡为下班缺卡
-* [ ] 请假审批通过后同步影响考勤状态
+* [x] 请假审批通过后同步影响考勤状态
 * [ ] 加班审批通过后同步影响加班记录
 * [x] 防止重复上班打卡
 * [x] 防止重复下班打卡
@@ -672,7 +720,7 @@ finance / 123456
 * [x] Nacos
 * [x] OpenFeign
 * [x] 微服务拆分基础结构与核心业务迁移
-* [ ] Sentinel 限流熔断
+* [x] Sentinel 限流熔断
 
 ## 16. Codex 开发建议顺序（历史记录）
 

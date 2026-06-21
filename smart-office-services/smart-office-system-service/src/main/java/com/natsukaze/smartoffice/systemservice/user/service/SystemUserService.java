@@ -9,6 +9,7 @@ import com.natsukaze.smartoffice.common.core.PageResult;
 import com.natsukaze.smartoffice.common.exception.BusinessException;
 import com.natsukaze.smartoffice.systemservice.user.dto.PasswordChangeRequest;
 import com.natsukaze.smartoffice.systemservice.user.dto.ProfileUpdateRequest;
+import com.natsukaze.smartoffice.systemservice.user.dto.UserCreateRequest;
 import com.natsukaze.smartoffice.systemservice.user.dto.UserPageQuery;
 import com.natsukaze.smartoffice.systemservice.user.entity.SysRole;
 import com.natsukaze.smartoffice.systemservice.user.entity.SysUser;
@@ -36,6 +37,8 @@ import java.util.stream.Collectors;
 public class SystemUserService {
 
     private static final String DEFAULT_ROLE = "EMPLOYEE";
+    private static final String ADMIN_USERNAME = "admin";
+    private static final String ADMIN_ROLE = "ADMIN";
 
     private final SysUserMapper sysUserMapper;
 
@@ -46,6 +49,37 @@ public class SystemUserService {
     private final PasswordEncoder passwordEncoder;
 
     private final SystemPermissionService permissionService;
+
+    @Transactional
+    public UserVO createUser(UserCreateRequest request) {
+        if (request.getUsername() == null || request.getUsername().isBlank()) {
+            throw new BusinessException("用户名不能为空");
+        }
+        if (request.getPassword() == null || request.getPassword().isBlank()) {
+            throw new BusinessException("密码不能为空");
+        }
+        if (request.getRealName() == null || request.getRealName().isBlank()) {
+            throw new BusinessException("姓名不能为空");
+        }
+        SysUser exist = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getUsername, request.getUsername())
+                .last("LIMIT 1"));
+        if (exist != null) {
+            throw new BusinessException("用户名已存在");
+        }
+        SysUser user = new SysUser();
+        user.setUsername(request.getUsername().trim());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRealName(request.getRealName().trim());
+        user.setPhone(request.getPhone());
+        user.setEmail(request.getEmail());
+        user.setAvatar(request.getAvatar());
+        user.setStatus(1);
+        user.setDeleted(0);
+        user.setVersion(0);
+        sysUserMapper.insert(user);
+        return toVO(user);
+    }
 
     public PageResult<UserVO> page(UserPageQuery query) {
         LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<SysUser>()
@@ -59,6 +93,15 @@ public class SystemUserService {
                 .orderByDesc(SysUser::getCreateTime);
         Page<SysUser> page = sysUserMapper.selectPage(new Page<>(query.getCurrent(), query.getSize()), wrapper);
         return PageResult.from(page.convert(this::toVO));
+    }
+
+    public List<UserVO> listEnabledOptions() {
+        return sysUserMapper.selectList(new LambdaQueryWrapper<SysUser>()
+                        .eq(SysUser::getStatus, 1)
+                        .orderByAsc(SysUser::getId))
+                .stream()
+                .map(this::toVO)
+                .toList();
     }
 
     public CurrentUserDTO getCurrentUser(Long userId) {
@@ -98,6 +141,11 @@ public class SystemUserService {
         if (user == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "user not found");
         }
+        List<String> roles = listRoleCodes(user.getId());
+        if (ADMIN_USERNAME.equalsIgnoreCase(user.getUsername()) && roles.stream().noneMatch(ADMIN_ROLE::equalsIgnoreCase)) {
+            roles = new java.util.ArrayList<>(roles);
+            roles.add(ADMIN_ROLE);
+        }
         return new SystemAuthUserDTO(
                 user.getId(),
                 user.getUsername(),
@@ -107,7 +155,7 @@ public class SystemUserService {
                 user.getEmail(),
                 user.getAvatar(),
                 user.getStatus(),
-                listRoleCodes(user.getId()),
+                roles,
                 permissionService.listPermissionsByUserId(user.getId()));
     }
 
@@ -129,6 +177,14 @@ public class SystemUserService {
         SysUser user = getRequiredUser(userId);
         user.setLastLoginTime(LocalDateTime.now());
         sysUserMapper.updateById(user);
+    }
+
+    public boolean hasRole(Long userId, String roleCode) {
+        if (ADMIN_USERNAME.equalsIgnoreCase(getRequiredUser(userId).getUsername())) {
+            return true;
+        }
+        List<String> roles = listRoleCodes(userId);
+        return roles.stream().anyMatch(r -> r.equalsIgnoreCase(roleCode));
     }
 
     private SysUser getRequiredUser(Long userId) {

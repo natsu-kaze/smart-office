@@ -10,8 +10,16 @@ import type {
   UserItem,
 } from '@/types/api'
 
+export function createUser(data: { username: string; password: string; realName: string; phone?: string; email?: string; avatar?: string }) {
+  return request.post<UserItem>('/api/system/users', data)
+}
+
 export function getUsers(params: Record<string, unknown>) {
   return request.get<PageResult<UserItem>>('/api/system/users', { params })
+}
+
+export function getUserOptions() {
+  return request.get<UserItem[]>('/api/system/users/options')
 }
 
 export function getProfile() {

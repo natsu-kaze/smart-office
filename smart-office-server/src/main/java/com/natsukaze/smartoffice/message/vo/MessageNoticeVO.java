@@ -15,6 +15,8 @@ public class MessageNoticeVO {
 
     private String content;
 
+    private String senderName;
+
     private String businessType;
 
     private Long businessId;

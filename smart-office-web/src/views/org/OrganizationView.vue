@@ -95,9 +95,22 @@
         <el-form-item label="部门名称" required>
           <el-input v-model="departmentForm.departmentName" placeholder="例如 研发部" />
         </el-form-item>
-        <el-form-item label="部门主管ID">
-          <el-input-number v-model="departmentForm.leaderUserId" class="full-width" :min="1" :controls="false" />
-          <div class="form-help">审批提交后，第一审批人取申请人所在部门的主管。</div>
+        <el-form-item label="部门主管">
+          <el-select
+            v-model="departmentForm.leaderUserId"
+            class="full-width"
+            filterable
+            clearable
+            placeholder="请选择部门主管"
+          >
+            <el-option
+              v-for="user in leaderOptions"
+              :key="user.id"
+              :label="userOptionLabel(user)"
+              :value="user.id"
+            />
+          </el-select>
+          <div class="form-help">审批提交后，第一审批人取申请人所在部门的主管。括号内保留 ID 方便排查。</div>
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="departmentForm.sort" class="full-width" :min="0" />
@@ -159,12 +172,14 @@ import {
   updateDepartment,
   updatePosition,
 } from '@/api/org'
+import { getUserOptions } from '@/api/system'
 import type {
   ApiId,
   DepartmentNode,
   DepartmentSavePayload,
   PositionItem,
   PositionSavePayload,
+  UserItem,
 } from '@/types/api'
 
 interface DepartmentOption {
@@ -174,6 +189,7 @@ interface DepartmentOption {
 
 const departments = ref<DepartmentNode[]>([])
 const positions = ref<PositionItem[]>([])
+const leaderOptions = ref<UserItem[]>([])
 const selectedDepartment = ref<DepartmentNode>()
 const loading = ref(false)
 
@@ -219,6 +235,7 @@ async function load() {
     const [tree, positionPage] = await Promise.all([
       getDepartmentTree(),
       getPositions({ current: 1, size: 100 }),
+      loadLeaderOptions(),
     ])
     departments.value = tree
     positions.value = positionPage.records
@@ -228,6 +245,10 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+async function loadLeaderOptions() {
+  leaderOptions.value = await getUserOptions()
 }
 
 function handleDepartmentSelect(node: DepartmentNode) {
@@ -345,6 +366,11 @@ function normalizeDepartmentPayload(): DepartmentSavePayload {
     ...departmentForm,
     leaderUserId: departmentForm.leaderUserId || null,
   }
+}
+
+function userOptionLabel(user: UserItem) {
+  const name = user.realName || user.username
+  return `${name}（${user.username}，ID ${user.id}）`
 }
 
 function isUnavailableParent(id: ApiId) {

@@ -19,7 +19,9 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" min-width="170" />
+        <el-table-column label="创建时间" min-width="170">
+          <template #default="{ row }">{{ formatTime(row.createTime) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="130">
           <template #default="{ row }">
             <el-button
@@ -40,7 +42,6 @@
       <header class="table-header">
         <div>
           <h2>公告栏</h2>
-          <p>公告单独显示，不再被普通通知淹没。</p>
         </div>
         <el-space wrap>
           <el-button v-if="canPublishAnnouncement" type="primary" @click="openAnnouncementDialog">
@@ -55,7 +56,10 @@
           <div>
             <h3>{{ localizeText(item.title) }}</h3>
             <p>{{ localizeText(item.content) }}</p>
-            <span>{{ item.createTime || '-' }}</span>
+            <div class="announcement-meta">
+              <span v-if="item.senderName">发布者：{{ item.senderName }}</span>
+              <span>{{ formatTime(item.createTime) }}</span>
+            </div>
           </div>
           <div class="announcement-actions">
             <el-tag :type="item.readStatus === 1 ? 'info' : 'warning'">
@@ -84,6 +88,13 @@
           </el-button>
         </el-space>
       </header>
+
+      <el-tabs v-model="messageTab" @tab-change="handleMessageTabChange">
+        <el-tab-pane label="全部" name="all" />
+        <el-tab-pane label="未读" name="unread" />
+        <el-tab-pane label="已读" name="read" />
+      </el-tabs>
+
       <el-table
         v-loading="loading"
         :data="messages"
@@ -91,16 +102,18 @@
         @selection-change="handleSelectionChange"
       >
         <el-table-column type="selection" width="48" />
-        <el-table-column label="标题" min-width="170" show-overflow-tooltip>
+        <el-table-column label="标题" min-width="140" show-overflow-tooltip>
           <template #default="{ row }">{{ localizeText(row.title) }}</template>
         </el-table-column>
-        <el-table-column label="内容" min-width="260" show-overflow-tooltip>
+        <el-table-column label="内容" min-width="220" show-overflow-tooltip>
           <template #default="{ row }">{{ localizeText(row.content) }}</template>
         </el-table-column>
         <el-table-column label="来源" width="110">
           <template #default="{ row }">{{ businessTypeText(row.businessType) }}</template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" min-width="170" />
+        <el-table-column label="创建时间" min-width="155">
+          <template #default="{ row }">{{ formatTime(row.createTime) }}</template>
+        </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.readStatus === 1 ? 'info' : 'warning'">
@@ -119,6 +132,16 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pager">
+        <el-pagination
+          v-model:current-page="messagePage.current"
+          v-model:page-size="messagePage.size"
+          layout="total, prev, pager, next"
+          :total="messagePage.total"
+          @current-change="loadMessages"
+        />
+      </div>
     </div>
 
     <el-dialog v-model="announcementVisible" title="发布公告" width="560px">
@@ -183,8 +206,15 @@ const departments = ref<DepartmentNode[]>([])
 const unreadCount = ref(0)
 const loading = ref(false)
 const announcementVisible = ref(false)
+const messageTab = ref('all')
 
-const canPublishAnnouncement = computed(() => authStore.canManageContent)
+const messagePage = reactive({
+  current: 1,
+  size: 20,
+  total: 0,
+})
+
+const canPublishAnnouncement = computed(() => authStore.hasPermission('message:announcement:send'))
 const needsDepartment = computed(() =>
   ['DEPARTMENT', 'SUB_DEPARTMENTS'].includes(announcementForm.targetType),
 )
@@ -225,20 +255,40 @@ const attendanceStatusMap: Record<string, string> = {
 async function load() {
   loading.value = true
   try {
-    const [todoPage, messagePage, announcementPage, unread] = await Promise.all([
+    const [todoPage, announcementPage, unread] = await Promise.all([
       getMessageTodos({ current: 1, size: 20 }),
-      getMessages({ current: 1, size: 30, excludeBusinessType: 'ANNOUNCEMENT' }),
       getMessages({ current: 1, size: 6, businessType: 'ANNOUNCEMENT' }),
       getUnreadCount(),
     ])
     todos.value = todoPage.records
-    messages.value = messagePage.records
     announcements.value = announcementPage.records
     unreadCount.value = unread
     selectedMessages.value = []
+    await loadMessages()
   } finally {
     loading.value = false
   }
+}
+
+async function loadMessages() {
+  const params: Record<string, unknown> = {
+    current: messagePage.current,
+    size: messagePage.size,
+    excludeBusinessType: 'ANNOUNCEMENT',
+  }
+  if (messageTab.value === 'unread') {
+    params.readStatus = 0
+  } else if (messageTab.value === 'read') {
+    params.readStatus = 1
+  }
+  const page = await getMessages(params)
+  messages.value = page.records
+  messagePage.total = page.total
+}
+
+function handleMessageTabChange() {
+  messagePage.current = 1
+  loadMessages()
 }
 
 async function openAnnouncementDialog() {
@@ -364,6 +414,11 @@ function attendanceStatusText(status: string) {
   return attendanceStatusMap[status] || status
 }
 
+function formatTime(value?: string) {
+  if (!value) return '-'
+  return value.replace('T', ' ')
+}
+
 function flattenDepartments(nodes: DepartmentNode[], level = 0): DepartmentOption[] {
   return nodes.flatMap((node) => [
     {
@@ -441,6 +496,19 @@ onMounted(load)
 .announcement-item span {
   color: #667085;
   font-size: 12px;
+}
+
+.announcement-meta {
+  display: flex;
+  gap: 16px;
+  color: #667085;
+  font-size: 12px;
+}
+
+.pager {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
 }
 
 .full-width {

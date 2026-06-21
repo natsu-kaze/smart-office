@@ -22,3 +22,4 @@ spring:
       - optional:nacos:shared-spring.yaml
       - optional:nacos:shared-redis.yaml
       - optional:nacos:shared-logs.yaml
+      - optional:nacos:shared-sentinel.yaml

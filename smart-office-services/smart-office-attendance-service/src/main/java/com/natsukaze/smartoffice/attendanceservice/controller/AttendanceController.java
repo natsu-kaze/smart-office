@@ -1,5 +1,6 @@
 package com.natsukaze.smartoffice.attendanceservice.controller;
 
+import com.natsukaze.smartoffice.attendanceservice.dto.AttendancePunchRequest;
 import com.natsukaze.smartoffice.attendanceservice.dto.AttendanceRecordQuery;
 import com.natsukaze.smartoffice.attendanceservice.dto.AttendanceRuleSaveRequest;
 import com.natsukaze.smartoffice.attendanceservice.service.AttendanceService;
@@ -28,13 +29,17 @@ public class AttendanceController {
     private final AttendanceService attendanceService;
 
     @PostMapping("/check-in")
-    public Result<AttendanceRecordVO> checkIn(@RequestHeader("X-User-Id") Long userId) {
-        return Result.success(attendanceService.checkIn(userId));
+    public Result<AttendanceRecordVO> checkIn(@RequestHeader("X-User-Id") Long userId,
+                                               @RequestBody(required = false) AttendancePunchRequest request) {
+        String remark = request != null ? request.getRemark() : null;
+        return Result.success(attendanceService.checkIn(userId, remark));
     }
 
     @PostMapping("/check-out")
-    public Result<AttendanceRecordVO> checkOut(@RequestHeader("X-User-Id") Long userId) {
-        return Result.success(attendanceService.checkOut(userId));
+    public Result<AttendanceRecordVO> checkOut(@RequestHeader("X-User-Id") Long userId,
+                                                @RequestBody(required = false) AttendancePunchRequest request) {
+        String remark = request != null ? request.getRemark() : null;
+        return Result.success(attendanceService.checkOut(userId, remark));
     }
 
     @GetMapping("/today")

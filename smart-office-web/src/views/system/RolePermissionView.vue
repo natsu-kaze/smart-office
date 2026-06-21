@@ -39,6 +39,13 @@
     </div>
 
     <div class="page-card menu-panel">
+      <el-alert
+        class="permission-help"
+        type="info"
+        :closable="false"
+        show-icon
+        title="菜单用于控制左侧入口是否可见，按钮权限用于控制发布公告、删除文件、维护制度、分配角色等操作是否允许。保存后相关用户需要重新登录获取新的权限。"
+      />
       <header class="section-header">
         <div>
           <h2>菜单权限</h2>
@@ -53,13 +60,14 @@
         :props="treeProps"
         node-key="id"
         show-checkbox
+        check-strictly
         default-expand-all
         :expand-on-click-node="false"
       >
         <template #default="{ data }">
           <span class="menu-node">
             <el-tag size="small" :type="menuTagType(data.menuType)">{{ menuTypeText(data.menuType) }}</el-tag>
-            <span>{{ data.menuName }}</span>
+            <span>{{ displayMenuName(data.menuName) }}</span>
             <small v-if="data.permission">{{ data.permission }}</small>
           </span>
         </template>
@@ -211,13 +219,11 @@ async function handleDeleteRole(row: RoleItem) {
 
 async function saveRoleMenus() {
   if (!currentRole.value) return
-  const checked = menuTreeRef.value?.getCheckedKeys(false) || []
-  const halfChecked = menuTreeRef.value?.getHalfCheckedKeys() || []
-  const menuIds = Array.from(new Set([...checked, ...halfChecked])) as ApiId[]
+  const menuIds = menuTreeRef.value?.getCheckedKeys() as ApiId[] || []
   savingMenus.value = true
   try {
     await assignRoleMenus(currentRole.value.id, menuIds)
-    ElMessage.success('角色权限已保存')
+    ElMessage.success('角色权限已保存，相关用户重新登录后生效')
   } finally {
     savingMenus.value = false
   }
@@ -229,6 +235,56 @@ function menuTypeText(type: string) {
 
 function menuTagType(type: string) {
   return type === 'BUTTON' ? 'warning' : type === 'CATALOG' ? 'info' : 'success'
+}
+
+function displayMenuName(name: string) {
+  const map: Record<string, string> = {
+    // 目录/菜单
+    Dashboard: '工作台',
+    Workbench: '工作台',
+    'System Management': '系统管理',
+    System: '系统管理',
+    'User Management': '用户管理',
+    Users: '用户管理',
+    'Role & Permission': '角色权限',
+    'Role Permission': '角色权限',
+    Roles: '角色权限',
+    Organization: '组织架构',
+    'Organization Structure': '组织架构',
+    Org: '组织架构',
+    'Approval Center': '审批中心',
+    Approvals: '审批中心',
+    'My Applications': '我的申请',
+    'My Todos': '我的审批待办',
+    'Message Center': '消息中心',
+    Messages: '消息中心',
+    'File Center': '文件中心',
+    Files: '文件中心',
+    'Policy Documents': '制度文档',
+    'Policy Document': '制度文档',
+    Policies: '制度文档',
+    Attendance: '考勤打卡',
+    'Attendance Clock': '考勤打卡',
+    // 按钮权限
+    'Assign User Role': '分配用户角色',
+    'Assign User Roles': '分配用户角色',
+    'Maintain Role': '维护角色',
+    'Role Maintenance': '维护角色',
+    'Assign Role Menu': '分配角色菜单',
+    'Assign Role Menus': '分配角色菜单',
+    'Maintain Approval Rules': '维护审批规则',
+    'Approval Rule Maintenance': '维护审批规则',
+    'Post Announcement': '发布公告',
+    'Post Announcements': '发布公告',
+    Announcements: '发布公告',
+    'Delete File': '删除文件',
+    'Delete Files': '删除文件',
+    'Maintain Policy': '维护制度',
+    'Policy Maintenance': '维护制度',
+    'Department Attendance': '部门考勤',
+    'Dept Attendance': '部门考勤',
+  }
+  return map[name] || name
 }
 
 onMounted(async () => {
@@ -278,6 +334,10 @@ onMounted(async () => {
 
 .menu-panel {
   min-height: 560px;
+}
+
+.permission-help {
+  margin-bottom: 14px;
 }
 
 .menu-node {

@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -28,6 +29,10 @@ public class ApprovalFormVO {
     private String content;
 
     private BigDecimal amount;
+
+    private LocalDate leaveStartDate;
+
+    private LocalDate leaveEndDate;
 
     private String status;
 

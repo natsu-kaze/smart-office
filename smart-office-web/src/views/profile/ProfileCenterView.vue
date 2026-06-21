@@ -27,8 +27,13 @@
           <el-form-item label="邮箱">
             <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
           </el-form-item>
-          <el-form-item label="头像地址">
-            <el-input v-model="profileForm.avatar" placeholder="可选，头像 URL" />
+          <el-form-item label="头像">
+            <div class="avatar-row">
+              <el-avatar :size="48" :src="profileForm.avatar || undefined">{{ profileInitial }}</el-avatar>
+              <el-input v-model="profileForm.avatar" placeholder="上传图片后自动填入，也可手动填写 URL" />
+              <input ref="avatarInputRef" class="hidden-file" type="file" accept="image/png,image/jpeg" @change="handleAvatarFile" />
+              <el-button :loading="uploadingAvatar" @click="avatarInputRef?.click()">上传图片</el-button>
+            </div>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" :loading="savingProfile" @click="handleSaveProfile">保存资料</el-button>
@@ -65,6 +70,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { changePassword, getProfile, updateProfile } from '@/api/system'
+import { getFilePreviewUrl, uploadFile } from '@/api/file'
 import { useAuthStore } from '@/stores/auth'
 import { setStoredUser } from '@/utils/token'
 import type { UserItem } from '@/types/api'
@@ -73,6 +79,8 @@ const authStore = useAuthStore()
 const profile = ref<UserItem | null>(null)
 const savingProfile = ref(false)
 const savingPassword = ref(false)
+const uploadingAvatar = ref(false)
+const avatarInputRef = ref<HTMLInputElement>()
 
 const profileForm = reactive({
   realName: '',
@@ -96,6 +104,27 @@ async function loadProfile() {
   profileForm.phone = profile.value.phone || ''
   profileForm.email = profile.value.email || ''
   profileForm.avatar = profile.value.avatar || ''
+}
+
+async function handleAvatarFile(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+  if (!['image/png', 'image/jpeg'].includes(file.type)) {
+    ElMessage.warning('头像仅支持 PNG / JPG 图片')
+    return
+  }
+  uploadingAvatar.value = true
+  try {
+    const record = await uploadFile(file, 'AVATAR')
+    profileForm.avatar = record.url && !record.url.startsWith('minio://')
+      ? record.url
+      : await getFilePreviewUrl(record.id)
+    ElMessage.success('头像图片已上传')
+  } finally {
+    uploadingAvatar.value = false
+  }
 }
 
 async function handleSaveProfile() {
@@ -191,6 +220,18 @@ onMounted(loadProfile)
 .section-header h2 {
   margin: 0;
   font-size: 18px;
+}
+
+.avatar-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  width: 100%;
+  align-items: center;
+}
+
+.hidden-file {
+  display: none;
 }
 
 @media (max-width: 1000px) {

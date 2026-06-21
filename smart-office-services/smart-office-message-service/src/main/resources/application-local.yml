@@ -24,3 +24,4 @@ spring:
       - optional:nacos:shared-logs.yaml
       - optional:nacos:shared-feign.yaml
       - optional:nacos:shared-mq.yaml
+      - optional:nacos:shared-sentinel.yaml

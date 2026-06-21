@@ -1,6 +1,8 @@
 package com.natsukaze.smartoffice.approvalservice.service;
 
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.natsukaze.smartoffice.api.attendance.client.AttendanceCommandClient;
+import com.natsukaze.smartoffice.api.attendance.dto.LeaveAttendanceCommand;
 import com.natsukaze.smartoffice.api.message.client.MessageCommandClient;
 import com.natsukaze.smartoffice.api.message.dto.NoticeCreateCommand;
 import com.natsukaze.smartoffice.api.message.dto.TodoCreateCommand;
@@ -11,9 +13,11 @@ import com.natsukaze.smartoffice.api.system.dto.CurrentUserDTO;
 import com.natsukaze.smartoffice.approvalservice.entity.ApprovalForm;
 import com.natsukaze.smartoffice.approvalservice.entity.ApprovalProcess;
 import com.natsukaze.smartoffice.approvalservice.entity.ApprovalRecord;
+import com.natsukaze.smartoffice.approvalservice.entity.ApprovalRule;
 import com.natsukaze.smartoffice.approvalservice.mapper.ApprovalFormMapper;
 import com.natsukaze.smartoffice.approvalservice.mapper.ApprovalProcessMapper;
 import com.natsukaze.smartoffice.approvalservice.mapper.ApprovalRecordMapper;
+import com.natsukaze.smartoffice.approvalservice.mapper.ApprovalRuleMapper;
 import com.natsukaze.smartoffice.common.core.Result;
 import com.natsukaze.smartoffice.common.enums.ApprovalStatus;
 import com.natsukaze.smartoffice.common.enums.ApprovalType;
@@ -28,6 +32,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -56,6 +62,9 @@ class ApprovalServiceTest {
     private ApprovalProcessMapper processMapper;
 
     @Mock
+    private ApprovalRuleMapper ruleMapper;
+
+    @Mock
     private SystemUserClient systemUserClient;
 
     @Mock
@@ -63,6 +72,9 @@ class ApprovalServiceTest {
 
     @Mock
     private MessageCommandClient messageCommandClient;
+
+    @Mock
+    private AttendanceCommandClient attendanceCommandClient;
 
     private ApprovalService approvalService;
 
@@ -72,9 +84,12 @@ class ApprovalServiceTest {
                 formMapper,
                 recordMapper,
                 processMapper,
+                ruleMapper,
                 systemUserClient,
                 orgEmployeeClient,
-                messageCommandClient);
+                messageCommandClient,
+                attendanceCommandClient);
+        lenient().when(ruleMapper.selectList(any(Wrapper.class))).thenReturn(List.of());
     }
 
     @Test
@@ -123,6 +138,7 @@ class ApprovalServiceTest {
         when(messageCommandClient.completeTodo(APPROVER_ID, BusinessType.APPROVAL.getCode(), FORM_ID))
                 .thenReturn(Result.success());
         when(messageCommandClient.createNotice(any(NoticeCreateCommand.class))).thenReturn(Result.success());
+        when(attendanceCommandClient.markLeave(any(LeaveAttendanceCommand.class))).thenReturn(Result.success());
 
         approvalService.approve(APPROVER_ID, FORM_ID, nullComment());
 
@@ -141,6 +157,13 @@ class ApprovalServiceTest {
         verify(messageCommandClient).createNotice(noticeCaptor.capture());
         assertThat(noticeCaptor.getValue().userId()).isEqualTo(APPLICANT_ID);
         assertThat(noticeCaptor.getValue().businessType()).isEqualTo(BusinessType.APPROVAL.getCode());
+
+        ArgumentCaptor<LeaveAttendanceCommand> leaveCaptor = ArgumentCaptor.forClass(LeaveAttendanceCommand.class);
+        verify(attendanceCommandClient).markLeave(leaveCaptor.capture());
+        assertThat(leaveCaptor.getValue().userId()).isEqualTo(APPLICANT_ID);
+        assertThat(leaveCaptor.getValue().startDate()).isEqualTo(LocalDate.of(2026, 6, 22));
+        assertThat(leaveCaptor.getValue().endDate()).isEqualTo(LocalDate.of(2026, 6, 23));
+        assertThat(leaveCaptor.getValue().approvalId()).isEqualTo(FORM_ID);
     }
 
     @Test
@@ -192,10 +215,45 @@ class ApprovalServiceTest {
     }
 
     @Test
+    void customRuleMovesApprovalToConfiguredNextApprover() {
+        ApprovalForm form = pendingForm();
+        ApprovalProcess process = pendingProcess();
+        ApprovalRule rule = new ApprovalRule();
+        rule.setApprovalType(ApprovalType.LEAVE);
+        rule.setRequiredRoles("DEPARTMENT_LEADER,ROLE:FINANCE");
+        rule.setStatus(1);
+
+        when(ruleMapper.selectList(any(Wrapper.class))).thenReturn(List.of(rule));
+        when(formMapper.selectById(FORM_ID)).thenReturn(form);
+        when(formMapper.updateById(form)).thenReturn(1);
+        when(systemUserClient.getFirstUserByRole("FINANCE"))
+                .thenReturn(Result.success(new CurrentUserDTO(FINANCE_ID, "finance", "Finance", 4L, 2L)));
+        stubApplicantEmployee();
+        stubDetailLookupsWithFinance();
+        when(processMapper.selectOne(any(Wrapper.class))).thenReturn(process);
+        when(messageCommandClient.completeTodo(APPROVER_ID, BusinessType.APPROVAL.getCode(), FORM_ID))
+                .thenReturn(Result.success());
+        when(messageCommandClient.createTodo(any(TodoCreateCommand.class))).thenReturn(Result.success());
+        when(messageCommandClient.createNotice(any(NoticeCreateCommand.class))).thenReturn(Result.success());
+
+        approvalService.approve(APPROVER_ID, FORM_ID, nullComment());
+
+        assertThat(form.getStatus()).isEqualTo(ApprovalStatus.PROCESSING);
+        assertThat(form.getCurrentApproverId()).isEqualTo(FINANCE_ID);
+        verify(attendanceCommandClient, never()).markLeave(any(LeaveAttendanceCommand.class));
+
+        ArgumentCaptor<ApprovalProcess> processCaptor = ArgumentCaptor.forClass(ApprovalProcess.class);
+        verify(processMapper).insert(processCaptor.capture());
+        assertThat(processCaptor.getValue().getApproverUserId()).isEqualTo(FINANCE_ID);
+        assertThat(processCaptor.getValue().getStepOrder()).isEqualTo(2);
+    }
+
+    @Test
     void approveFailsFastWhenOptimisticLockRejectsUpdate() {
         ApprovalForm form = pendingForm();
         when(formMapper.selectById(FORM_ID)).thenReturn(form);
         when(formMapper.updateById(form)).thenReturn(0);
+        stubApplicantEmployee();
 
         assertThatThrownBy(() -> approvalService.approve(APPROVER_ID, FORM_ID, nullComment()))
                 .isInstanceOf(BusinessException.class)
@@ -230,6 +288,8 @@ class ApprovalServiceTest {
         form.setTitle("Annual leave");
         form.setApplicantUserId(APPLICANT_ID);
         form.setApplicantDeptId(2L);
+        form.setLeaveStartDate(LocalDate.of(2026, 6, 22));
+        form.setLeaveEndDate(LocalDate.of(2026, 6, 23));
         form.setStatus(ApprovalStatus.DRAFT);
         return form;
     }
@@ -253,6 +313,7 @@ class ApprovalServiceTest {
         process.setId(200L);
         process.setFormId(FORM_ID);
         process.setApproverUserId(APPROVER_ID);
+        process.setStepOrder(1);
         process.setStatus(ApprovalStatus.PENDING);
         return process;
     }

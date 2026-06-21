@@ -10,7 +10,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = ServiceNames.MESSAGE, path = "/internal/messages")
+@FeignClient(name = ServiceNames.MESSAGE, path = "/internal/messages",
+        fallbackFactory = MessageCommandClientFallback.class)
 public interface MessageCommandClient {
 
     @PostMapping("/todos")

@@ -10,19 +10,30 @@
       </header>
 
       <el-descriptions :column="2" border>
-        <el-descriptions-item label="上班时间">{{ today.checkInTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="上班时间">{{ formatTime(today.checkInTime) }}</el-descriptions-item>
         <el-descriptions-item label="上班状态">
           <el-tag :type="statusTag(today.checkInStatus)">{{ statusText(today.checkInStatus) }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="下班时间">{{ today.checkOutTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="下班时间">{{ formatTime(today.checkOutTime) }}</el-descriptions-item>
         <el-descriptions-item label="下班状态">
           <el-tag :type="statusTag(today.checkOutStatus)">{{ statusText(today.checkOutStatus) }}</el-tag>
         </el-descriptions-item>
       </el-descriptions>
 
       <div class="actions">
-        <el-button type="primary" @click="handleCheckIn">上班打卡</el-button>
-        <el-button type="success" @click="handleCheckOut">下班打卡</el-button>
+        <el-tooltip content="请先完成上班打卡" :disabled="!!today.checkInTime || todayIsLeave">
+          <el-button type="primary" :disabled="!today.checkInTime || todayIsLeave || !!today.checkOutTime" @click="handleCheckIn">
+            上班打卡
+          </el-button>
+        </el-tooltip>
+        <el-tooltip :content="!today.checkInTime ? '请先完成上班打卡' : '已下班打卡'" :disabled="!!today.checkInTime && !today.checkOutTime && !todayIsLeave">
+          <el-button type="success" :disabled="!today.checkInTime || todayIsLeave || !!today.checkOutTime" @click="handleCheckOut">
+            下班打卡
+          </el-button>
+        </el-tooltip>
+        <el-text v-if="todayIsLeave" type="info">今天已审批为请假，无需打卡。</el-text>
+        <el-text v-else-if="today.checkInTime && today.checkOutTime" type="success">今日打卡已完成</el-text>
+        <el-text v-else-if="today.checkInTime && !today.checkOutTime" type="warning">上班已打卡，下班别忘了</el-text>
       </div>
     </div>
 
@@ -48,6 +59,10 @@
           <div class="metric-item danger">
             <strong>{{ summary?.missingCount ?? 0 }}</strong>
             <span>缺卡</span>
+          </div>
+          <div class="metric-item info">
+            <strong>{{ summary?.leaveDays ?? 0 }}</strong>
+            <span>请假天数</span>
           </div>
         </div>
       </div>
@@ -89,6 +104,10 @@
           <div>
             <strong>{{ departmentSnapshot.present }}</strong>
             <span>实到</span>
+          </div>
+          <div>
+            <strong>{{ departmentSnapshot.leave }}</strong>
+            <span>请假</span>
           </div>
           <div>
             <strong>{{ departmentSnapshot.absent }}</strong>
@@ -148,13 +167,17 @@
         <el-table-column prop="attendanceDate" label="日期" width="130" />
         <el-table-column v-if="recordMode === 'department'" prop="realName" label="员工" width="120" />
         <el-table-column v-if="recordMode === 'department'" prop="departmentName" label="部门" width="160" />
-        <el-table-column prop="checkInTime" label="上班时间" min-width="170" />
+        <el-table-column prop="checkInTime" label="上班时间" min-width="170">
+          <template #default="{ row }">{{ formatDateTime(row.checkInTime) }}</template>
+        </el-table-column>
         <el-table-column prop="checkInStatus" label="上班状态" width="110">
           <template #default="{ row }">
             <el-tag :type="statusTag(row.checkInStatus)">{{ statusText(row.checkInStatus) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="checkOutTime" label="下班时间" min-width="170" />
+        <el-table-column prop="checkOutTime" label="下班时间" min-width="170">
+          <template #default="{ row }">{{ formatDateTime(row.checkOutTime) }}</template>
+        </el-table-column>
         <el-table-column prop="checkOutStatus" label="下班状态" width="110">
           <template #default="{ row }">
             <el-tag :type="statusTag(row.checkOutStatus)">{{ statusText(row.checkOutStatus) }}</el-tag>
@@ -175,6 +198,29 @@
         />
       </div>
     </div>
+    <el-dialog v-model="punchDialog.visible" :title="punchDialog.type === 'in' ? '上班打卡' : '下班打卡'" width="420px" :close-on-click-modal="false" center>
+      <div class="punch-dialog-body">
+        <div class="punch-icon" :class="punchDialog.type">
+          <span>{{ punchDialog.type === 'in' ? '☀️' : '🌙' }}</span>
+        </div>
+        <div class="punch-time">{{ punchDialog.currentTime }}</div>
+        <div class="punch-label">{{ punchDialog.type === 'in' ? '上班打卡' : '下班打卡' }}</div>
+        <el-input
+          v-model="punchDialog.remark"
+          type="textarea"
+          :rows="2"
+          placeholder="备注（选填），如：外出见客户、远程办公"
+          maxlength="200"
+          show-word-limit
+        />
+      </div>
+      <template #footer>
+        <el-button @click="punchDialog.visible = false">取消</el-button>
+        <el-button :type="punchDialog.type === 'in' ? 'primary' : 'success'" :loading="punchDialog.loading" @click="confirmPunch">
+          确认打卡
+        </el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
@@ -225,6 +271,15 @@ const recordTotal = ref(0)
 const recordMode = ref<'mine' | 'department'>('mine')
 const summaryMonth = ref(currentMonth())
 
+const punchDialog = reactive({
+  visible: false,
+  type: 'in' as 'in' | 'out',
+  currentTime: '',
+  remark: '',
+  loading: false,
+  timer: null as ReturnType<typeof setInterval> | null,
+})
+
 const recordQuery = reactive({
   current: 1,
   size: 10,
@@ -233,13 +288,14 @@ const recordQuery = reactive({
   departmentId: undefined as ApiId | undefined,
 })
 
-const canViewDepartment = computed(() => authStore.canManageContent)
+const canViewDepartment = computed(() => authStore.hasPermission('attendance:department:list'))
 const recordModes = computed(() => [
   { label: '我的记录', value: 'mine' },
   ...(canViewDepartment.value ? [{ label: '部门记录', value: 'department' }] : []),
 ])
 const departmentOptions = computed(() => flattenDepartments(departments.value))
 const snapshotDate = computed(() => recordQuery.endDate || todayString())
+const todayIsLeave = computed(() => [today.value.checkInStatus, today.value.checkOutStatus].includes('LEAVE'))
 
 const statusDistribution = computed<StatusItem[]>(() => {
   const base = recordMode.value === 'department' ? chartRecords.value : records.value
@@ -248,23 +304,29 @@ const statusDistribution = computed<StatusItem[]>(() => {
     late: 0,
     early: 0,
     missing: 0,
+    leave: 0,
     abnormal: 0,
   }
   base.forEach((record) => {
     const statuses = [record.checkInStatus, record.checkOutStatus]
+    if (statuses.includes('LEAVE')) {
+      counts.leave += 1
+      return
+    }
     if (statuses.includes('MISSING')) counts.missing += 1
     if (statuses.includes('LATE')) counts.late += 1
     if (statuses.includes('EARLY_LEAVE')) counts.early += 1
     if (statuses.includes('ABNORMAL')) counts.abnormal += 1
     if (record.checkInStatus === 'NORMAL' && record.checkOutStatus === 'NORMAL') counts.normal += 1
   })
-  const max = Math.max(1, ...Object.values(counts))
+  const total = Math.max(1, Object.values(counts).reduce((sum, count) => sum + count, 0))
   return [
-    { key: 'normal', label: '正常', count: counts.normal, percent: Math.round((counts.normal / max) * 100) },
-    { key: 'late', label: '迟到', count: counts.late, percent: Math.round((counts.late / max) * 100) },
-    { key: 'early', label: '早退', count: counts.early, percent: Math.round((counts.early / max) * 100) },
-    { key: 'missing', label: '缺卡', count: counts.missing, percent: Math.round((counts.missing / max) * 100) },
-    { key: 'abnormal', label: '异常', count: counts.abnormal, percent: Math.round((counts.abnormal / max) * 100) },
+    { key: 'normal', label: '正常', count: counts.normal, percent: Math.round((counts.normal / total) * 100) },
+    { key: 'late', label: '迟到', count: counts.late, percent: Math.round((counts.late / total) * 100) },
+    { key: 'early', label: '早退', count: counts.early, percent: Math.round((counts.early / total) * 100) },
+    { key: 'missing', label: '缺卡', count: counts.missing, percent: Math.round((counts.missing / total) * 100) },
+    { key: 'leave', label: '请假', count: counts.leave, percent: Math.round((counts.leave / total) * 100) },
+    { key: 'abnormal', label: '异常', count: counts.abnormal, percent: Math.round((counts.abnormal / total) * 100) },
   ]
 })
 
@@ -272,14 +334,20 @@ const departmentSnapshot = computed(() => {
   const expected = departmentEmployees.value.length
   const presentUserIds = new Set(
     snapshotRecords.value
-      .filter((record) => record.checkInStatus && record.checkInStatus !== 'MISSING')
+      .filter((record) => record.checkInStatus && record.checkInStatus !== 'MISSING' && record.checkInStatus !== 'LEAVE')
+      .map((record) => String(record.userId)),
+  )
+  const leaveUserIds = new Set(
+    snapshotRecords.value
+      .filter((record) => record.checkInStatus === 'LEAVE' || record.checkOutStatus === 'LEAVE')
       .map((record) => String(record.userId)),
   )
   const abnormal = snapshotRecords.value.filter((record) => isAbnormal(record)).length
   return {
     expected,
     present: presentUserIds.size,
-    absent: Math.max(expected - presentUserIds.size, 0),
+    leave: leaveUserIds.size,
+    absent: Math.max(expected - presentUserIds.size - leaveUserIds.size, 0),
     abnormal,
   }
 })
@@ -292,7 +360,7 @@ const attendanceRate = computed(() => {
 const absentEmployees = computed(() => {
   const presentUserIds = new Set(
     snapshotRecords.value
-      .filter((record) => record.checkInStatus && record.checkInStatus !== 'MISSING')
+      .filter((record) => record.checkInStatus && record.checkInStatus !== 'MISSING' && record.checkInStatus !== 'LEAVE')
       .map((record) => String(record.userId)),
   )
   return departmentEmployees.value
@@ -356,16 +424,52 @@ async function loadDepartmentAnalytics() {
   departmentEmployees.value = employeePage.records
 }
 
-async function handleCheckIn() {
-  today.value = await checkIn()
-  ElMessage.success('上班打卡成功')
-  await loadRecords()
+function openPunchDialog(type: 'in' | 'out') {
+  punchDialog.type = type
+  punchDialog.remark = ''
+  punchDialog.loading = false
+  punchDialog.currentTime = nowTimeString()
+  punchDialog.visible = true
+  if (punchDialog.timer) clearInterval(punchDialog.timer)
+  punchDialog.timer = setInterval(() => {
+    punchDialog.currentTime = nowTimeString()
+  }, 1000)
 }
 
-async function handleCheckOut() {
-  today.value = await checkOut()
-  ElMessage.success('下班打卡成功')
-  await loadRecords()
+function closePunchDialog() {
+  punchDialog.visible = false
+  if (punchDialog.timer) {
+    clearInterval(punchDialog.timer)
+    punchDialog.timer = null
+  }
+}
+
+async function confirmPunch() {
+  punchDialog.loading = true
+  try {
+    const remark = punchDialog.remark.trim() || undefined
+    if (punchDialog.type === 'in') {
+      today.value = await checkIn(remark)
+      ElMessage.success('上班打卡成功')
+    } else {
+      today.value = await checkOut(remark)
+      ElMessage.success('下班打卡成功')
+    }
+    closePunchDialog()
+    await loadRecords()
+  } catch {
+    // error handled by interceptor
+  } finally {
+    punchDialog.loading = false
+  }
+}
+
+function handleCheckIn() {
+  openPunchDialog('in')
+}
+
+function handleCheckOut() {
+  openPunchDialog('out')
 }
 
 async function handleModeChange() {
@@ -426,6 +530,19 @@ function statusTag(status?: string) {
   return status ? map[status] || 'info' : 'info'
 }
 
+function formatDateTime(value?: string) {
+  if (!value) return '-'
+  const normalized = value.replace('T', ' ')
+  const match = normalized.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})/)
+  return match ? `${match[1]} ${match[2]}` : normalized
+}
+
+function formatTime(value?: string) {
+  if (!value) return '-'
+  const match = value.match(/[ T](\d{2}:\d{2}:\d{2})/)
+  return match ? match[1] : formatDateTime(value)
+}
+
 function flattenDepartments(nodes: DepartmentNode[], level = 0): DepartmentOption[] {
   return nodes.flatMap((node) => [
     {
@@ -448,6 +565,11 @@ function firstDayOfMonth() {
   return `${currentMonth()}-01`
 }
 
+function nowTimeString() {
+  const now = new Date()
+  return now.toLocaleTimeString('zh-CN', { hour12: false })
+}
+
 onMounted(load)
 </script>
 
@@ -455,6 +577,7 @@ onMounted(load)
 .attendance-page {
   display: grid;
   gap: 16px;
+  min-width: 0;
 }
 
 .section-header,
@@ -490,11 +613,17 @@ onMounted(load)
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
+  min-width: 0;
+}
+
+.summary-card,
+.chart-card {
+  min-width: 0;
 }
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
   margin-top: 16px;
 }
@@ -530,6 +659,10 @@ onMounted(load)
 
 .metric-item.danger strong {
   color: #dc2626;
+}
+
+.metric-item.info strong {
+  color: #2563eb;
 }
 
 .status-bars {
@@ -574,6 +707,10 @@ onMounted(load)
   background: #ef4444;
 }
 
+.bar-track .leave {
+  background: #3b82f6;
+}
+
 .attendance-dashboard {
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr) minmax(220px, 0.9fr);
@@ -604,7 +741,7 @@ onMounted(load)
 
 .dashboard-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 12px;
 }
 
@@ -644,5 +781,45 @@ onMounted(load)
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+.punch-dialog-body {
+  display: grid;
+  gap: 16px;
+  justify-items: center;
+  padding: 12px 0;
+}
+
+.punch-icon {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-content: center;
+  border-radius: 50%;
+  font-size: 32px;
+}
+
+.punch-icon.in {
+  background: #eff6ff;
+}
+
+.punch-icon.out {
+  background: #f0fdf4;
+}
+
+.punch-time {
+  font-size: 36px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #1a1a2e;
+}
+
+.punch-label {
+  font-size: 15px;
+  color: #667085;
+}
+
+.punch-dialog-body .el-textarea {
+  width: 100%;
 }
 </style>

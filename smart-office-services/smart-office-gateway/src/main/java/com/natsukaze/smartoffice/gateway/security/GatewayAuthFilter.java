@@ -15,6 +15,7 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ public class GatewayAuthFilter implements GlobalFilter, Ordered {
     private static final String ROLES_HEADER = "X-User-Roles";
     private static final String PERMISSIONS_HEADER = "X-User-Permissions";
     private static final String ADMIN_ROLE = "ADMIN";
+    private static final String ADMIN_USERNAME = "admin";
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/auth/login",
             "/actuator/health",
@@ -74,10 +76,14 @@ public class GatewayAuthFilter implements GlobalFilter, Ordered {
             if (userId == null) {
                 return unauthorized(exchange, "invalid token");
             }
-            List<String> roles = claimList(claims, "roles");
+            List<String> roles = new ArrayList<>(claimList(claims, "roles"));
             List<String> permissions = claimList(claims, "permissions");
+            if (isAdminSubject(claims) && roles.stream().noneMatch(ADMIN_ROLE::equalsIgnoreCase)) {
+                roles.add(ADMIN_ROLE);
+            }
             String requiredPermission = requiredPermission(path, exchange.getRequest().getMethod());
-            if (requiredPermission != null && !roles.contains(ADMIN_ROLE) && !permissions.contains(requiredPermission)) {
+            boolean admin = roles.stream().anyMatch(ADMIN_ROLE::equalsIgnoreCase);
+            if (requiredPermission != null && !admin && !permissions.contains(requiredPermission)) {
                 return forbidden(exchange, "permission denied");
             }
             return tokenStore.isActive(token)
@@ -158,6 +164,9 @@ public class GatewayAuthFilter implements GlobalFilter, Ordered {
         if (path.startsWith("/api/auth")) {
             return null;
         }
+        if (path.startsWith("/api/system/users/options")) {
+            return "org:manage";
+        }
         if (path.startsWith("/api/system/users/profile")) {
             return null;
         }
@@ -173,8 +182,11 @@ public class GatewayAuthFilter implements GlobalFilter, Ordered {
         if (path.startsWith("/api/messages/announcements")) {
             return "message:announcement:send";
         }
+        if (path.startsWith("/api/approvals/rules") && !HttpMethod.GET.equals(method)) {
+            return "approval:rule:manage";
+        }
         if (path.startsWith("/api/files") && HttpMethod.DELETE.equals(method)) {
-            return "file:delete";
+            return "file:list";
         }
         if (path.startsWith("/api/policies") && !HttpMethod.GET.equals(method)) {
             return "policy:manage";
@@ -198,5 +210,9 @@ public class GatewayAuthFilter implements GlobalFilter, Ordered {
                     .toList();
         }
         return List.of();
+    }
+
+    private boolean isAdminSubject(Claims claims) {
+        return ADMIN_USERNAME.equalsIgnoreCase(claims.getSubject());
     }
 }

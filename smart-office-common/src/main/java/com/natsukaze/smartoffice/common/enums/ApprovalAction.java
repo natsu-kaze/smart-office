@@ -12,7 +12,8 @@ public enum ApprovalAction implements BaseCodeEnum {
     APPROVE("APPROVE", "Approve"),
     REJECT("REJECT", "Reject"),
     WITHDRAW("WITHDRAW", "Withdraw"),
-    CLOSE("CLOSE", "Close");
+    CLOSE("CLOSE", "Close"),
+    DELETE("DELETE", "Delete");
 
     @EnumValue
     @JsonValue

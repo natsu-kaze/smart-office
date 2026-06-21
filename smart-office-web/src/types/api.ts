@@ -164,6 +164,8 @@ export interface ApprovalItem {
   applicantDeptName?: string
   content?: string
   amount?: number
+  leaveStartDate?: string
+  leaveEndDate?: string
   status: string
   currentApproverId?: ApiId
   currentApproverName?: string
@@ -182,6 +184,35 @@ export interface ApprovalRecord {
   toStatus?: string
   comment?: string
   createTime?: string
+}
+
+export interface ApprovalRule {
+  id: ApiId
+  approvalType: string
+  name?: string
+  priority?: number
+  amountLimit?: number
+  applicantRoleCode?: string
+  deptId?: ApiId
+  requiredRoles: string
+  timeoutHours?: number
+  timeoutAction?: string
+  status: number
+  remark?: string
+}
+
+export interface ApprovalRulePayload {
+  approvalType: string
+  name?: string
+  priority?: number
+  amountLimit?: number
+  applicantRoleCode?: string
+  deptId?: ApiId
+  requiredRoles: string
+  timeoutHours?: number
+  timeoutAction?: string
+  status: number
+  remark?: string
 }
 
 export interface AttendanceToday {
@@ -218,6 +249,7 @@ export interface MessageNotice {
   id: ApiId
   title: string
   content: string
+  senderName?: string
   businessType?: string
   businessId?: ApiId
   readStatus: number

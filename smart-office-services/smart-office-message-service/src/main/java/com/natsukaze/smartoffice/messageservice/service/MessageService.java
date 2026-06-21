@@ -6,8 +6,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.natsukaze.smartoffice.api.message.dto.NoticeCreateCommand;
 import com.natsukaze.smartoffice.api.message.dto.TodoCreateCommand;
 import com.natsukaze.smartoffice.api.org.client.OrgEmployeeClient;
-import com.natsukaze.smartoffice.api.system.client.SystemUserClient;
-import com.natsukaze.smartoffice.api.system.dto.SystemAuthUserDTO;
 import com.natsukaze.smartoffice.common.core.ErrorCode;
 import com.natsukaze.smartoffice.common.core.PageResult;
 import com.natsukaze.smartoffice.common.core.Result;
@@ -47,8 +45,6 @@ public class MessageService {
     private final NoticeMessageProducer noticeMessageProducer;
 
     private final OrgEmployeeClient orgEmployeeClient;
-
-    private final SystemUserClient systemUserClient;
 
     public PageResult<MessageNoticeVO> myMessages(Long userId, MessagePageQuery query) {
         LambdaQueryWrapper<MessageNotice> wrapper = new LambdaQueryWrapper<MessageNotice>()
@@ -165,21 +161,23 @@ public class MessageService {
 
     @Transactional
     public AnnouncementSendVO publishAnnouncement(Long publisherId, String username, AnnouncementCreateRequest request) {
-        ensureMessageManager(username);
         List<Long> recipientIds = resolveAnnouncementRecipients(request).stream()
-                .filter(userId -> userId != null && !userId.equals(publisherId))
+                .filter(userId -> userId != null)
                 .distinct()
                 .toList();
         if (recipientIds.isEmpty()) {
             throw new BusinessException("announcement recipients not found");
         }
-        recipientIds.forEach(userId -> saveNotice(new NoticeCreateCommand(
-                userId,
-                request.getTitle(),
-                request.getContent(),
-                BusinessType.ANNOUNCEMENT.getCode(),
-                null
-        )));
+        recipientIds.forEach(userId -> {
+            MessageNotice notice = new MessageNotice();
+            notice.setUserId(userId);
+            notice.setTitle(request.getTitle());
+            notice.setContent(request.getContent());
+            notice.setSenderName(username);
+            notice.setBusinessType(BusinessType.ANNOUNCEMENT);
+            notice.setReadStatus(0);
+            noticeMapper.insert(notice);
+        });
         return AnnouncementSendVO.builder()
                 .recipientCount(recipientIds.size())
                 .build();
@@ -254,17 +252,6 @@ public class MessageService {
         return result.data();
     }
 
-    private void ensureMessageManager(String username) {
-        Result<SystemAuthUserDTO> result = systemUserClient.getByUsername(username);
-        if (result == null || result.code() != ErrorCode.SUCCESS.getCode() || result.data() == null) {
-            throw new BusinessException("user not found");
-        }
-        List<String> roles = result.data().roles();
-        if (roles == null || roles.stream().noneMatch(role -> "ADMIN".equals(role) || "MANAGER".equals(role))) {
-            throw new BusinessException("permission denied");
-        }
-    }
-
     private void finishTodo(MessageTodo todo) {
         todo.setStatus(TodoStatus.DONE);
         todo.setCompletedTime(LocalDateTime.now());
@@ -298,6 +285,7 @@ public class MessageService {
                 .id(notice.getId())
                 .title(notice.getTitle())
                 .content(notice.getContent())
+                .senderName(notice.getSenderName())
                 .businessType(notice.getBusinessType() == null ? null : notice.getBusinessType().getCode())
                 .businessId(notice.getBusinessId())
                 .readStatus(notice.getReadStatus())

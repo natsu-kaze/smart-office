@@ -2,7 +2,6 @@ package com.natsukaze.smartoffice.messageservice.service;
 
 import com.natsukaze.smartoffice.api.message.dto.NoticeCreateCommand;
 import com.natsukaze.smartoffice.api.org.client.OrgEmployeeClient;
-import com.natsukaze.smartoffice.api.system.client.SystemUserClient;
 import com.natsukaze.smartoffice.common.enums.BusinessType;
 import com.natsukaze.smartoffice.messageservice.entity.MessageNotice;
 import com.natsukaze.smartoffice.messageservice.mapper.MessageNoticeMapper;
@@ -39,14 +38,11 @@ class MessageServiceTest {
     @Mock
     private OrgEmployeeClient orgEmployeeClient;
 
-    @Mock
-    private SystemUserClient systemUserClient;
-
     private MessageService messageService;
 
     @BeforeEach
     void setUp() {
-        messageService = new MessageService(noticeMapper, todoMapper, noticeMessageProducer, orgEmployeeClient, systemUserClient);
+        messageService = new MessageService(noticeMapper, todoMapper, noticeMessageProducer, orgEmployeeClient);
     }
 
     @Test

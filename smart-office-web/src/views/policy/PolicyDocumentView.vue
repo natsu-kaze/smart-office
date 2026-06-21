@@ -4,12 +4,9 @@
       <header class="table-header">
         <div>
           <h2>制度文档</h2>
-          <p>维护企业制度、流程说明和公告文档，支持全文检索与上传解析。</p>
+          <p>浏览企业制度、流程说明和公告文档，支持全文检索。</p>
         </div>
-        <el-space v-if="canManage" wrap>
-          <el-button @click="openUploadDialog">上传制度</el-button>
-          <el-button type="primary" @click="openCreateDialog">新建制度</el-button>
-        </el-space>
+        <el-button v-if="canManage" type="primary" @click="$router.push('/policies/manage')">制度管理</el-button>
       </header>
 
       <el-form class="filters" :model="query" inline>
@@ -31,7 +28,7 @@
 
       <el-table v-loading="loading" :data="policies" border>
         <el-table-column prop="title" label="标题" min-width="220" show-overflow-tooltip />
-        <el-table-column prop="summary" label="摘要" min-width="260" show-overflow-tooltip />
+        <el-table-column prop="summary" label="摘要" min-width="280" show-overflow-tooltip />
         <el-table-column prop="documentVersion" label="版本" width="110" />
         <el-table-column label="状态" width="110">
           <template #default="{ row }">
@@ -39,36 +36,9 @@
           </template>
         </el-table-column>
         <el-table-column prop="publishedAt" label="发布时间" min-width="170" />
-        <el-table-column label="操作" :width="canManage ? 330 : 90" fixed="right">
+        <el-table-column label="操作" width="90" fixed="right">
           <template #default="{ row }">
-            <el-space wrap>
-              <el-button size="small" @click="openDetail(row)">详情</el-button>
-              <template v-if="canManage">
-                <el-button size="small" type="primary" plain @click="openEditDialog(row)">编辑</el-button>
-                <el-button
-                  v-if="row.status !== 'PUBLISHED'"
-                  size="small"
-                  type="success"
-                  plain
-                  @click="handleStatus(row, 'PUBLISHED')"
-                >
-                  发布
-                </el-button>
-                <el-button v-if="row.status !== 'DRAFT'" size="small" plain @click="handleStatus(row, 'DRAFT')">
-                  转草稿
-                </el-button>
-                <el-button
-                  v-if="row.status !== 'ARCHIVED'"
-                  size="small"
-                  type="warning"
-                  plain
-                  @click="handleStatus(row, 'ARCHIVED')"
-                >
-                  归档
-                </el-button>
-                <el-button size="small" type="danger" plain @click="handleDelete(row)">删除</el-button>
-              </template>
-            </el-space>
+            <el-button size="small" @click="openDetail(row)">详情</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -85,70 +55,6 @@
         />
       </div>
     </div>
-
-    <el-dialog v-model="dialogVisible" :title="editingId ? '编辑制度' : '新建制度'" width="680px">
-      <el-form :model="form" label-width="90px">
-        <el-form-item label="标题" required>
-          <el-input v-model="form.title" />
-        </el-form-item>
-        <el-form-item label="版本">
-          <el-input v-model="form.documentVersion" placeholder="例如 v1.0" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-radio-group v-model="form.status">
-            <el-radio-button label="DRAFT">草稿</el-radio-button>
-            <el-radio-button label="PUBLISHED">发布</el-radio-button>
-            <el-radio-button label="ARCHIVED">归档</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="摘要">
-          <el-input v-model="form.summary" type="textarea" :rows="3" />
-        </el-form-item>
-        <el-form-item label="正文">
-          <el-input v-model="form.content" type="textarea" :rows="10" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSave">保存</el-button>
-      </template>
-    </el-dialog>
-
-    <el-dialog v-model="uploadVisible" title="上传制度文档" width="560px">
-      <el-form :model="uploadForm" label-width="90px">
-        <el-form-item label="文件" required>
-          <el-upload
-            drag
-            :auto-upload="false"
-            :limit="1"
-            accept=".pdf,.txt,.md"
-            :on-change="handleUploadChange"
-            :on-remove="handleUploadRemove"
-          >
-            <div class="upload-title">拖拽或点击选择文件</div>
-            <template #tip>
-              <div class="upload-tip">支持 PDF、TXT、Markdown，上传后自动解析正文并同步检索索引。</div>
-            </template>
-          </el-upload>
-        </el-form-item>
-        <el-form-item label="标题">
-          <el-input v-model="uploadForm.title" placeholder="不填则使用文件名" />
-        </el-form-item>
-        <el-form-item label="版本">
-          <el-input v-model="uploadForm.documentVersion" placeholder="例如 v1.0" />
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-radio-group v-model="uploadForm.status">
-            <el-radio-button label="DRAFT">草稿</el-radio-button>
-            <el-radio-button label="PUBLISHED">发布</el-radio-button>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="uploadVisible = false">取消</el-button>
-        <el-button type="primary" :loading="uploading" @click="handleUploadPolicy">上传并解析</el-button>
-      </template>
-    </el-dialog>
 
     <el-drawer v-model="detailVisible" title="制度详情" size="560px">
       <template v-if="selectedPolicy">
@@ -169,46 +75,23 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import type { UploadFile } from 'element-plus'
-import { createPolicy, deletePolicy, getPolicies, getPolicyDetail, updatePolicy, uploadPolicy } from '@/api/policy'
+import { getPolicies, getPolicyDetail } from '@/api/policy'
 import { useAuthStore } from '@/stores/auth'
-import type { ApiId, PolicyDocument } from '@/types/api'
-
-type PolicyStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
+import type { PolicyDocument } from '@/types/api'
 
 const authStore = useAuthStore()
-const canManage = computed(() => authStore.canManageContent)
+const canManage = computed(() => authStore.hasPermission('policy:manage'))
 const policies = ref<PolicyDocument[]>([])
 const loading = ref(false)
 const total = ref(0)
-const dialogVisible = ref(false)
-const uploadVisible = ref(false)
-const uploading = ref(false)
 const detailVisible = ref(false)
 const selectedPolicy = ref<PolicyDocument | null>(null)
-const editingId = ref<ApiId | null>(null)
-const selectedUploadFile = ref<File | null>(null)
 
 const query = reactive({
   current: 1,
   size: 10,
   keyword: '',
   status: '',
-})
-
-const form = reactive({
-  title: '',
-  content: '',
-  summary: '',
-  documentVersion: 'v1.0',
-  status: 'DRAFT' as PolicyStatus,
-})
-
-const uploadForm = reactive({
-  title: '',
-  documentVersion: 'v1.0',
-  status: 'DRAFT' as PolicyStatus,
 })
 
 async function load() {
@@ -234,104 +117,9 @@ function resetQuery() {
   load()
 }
 
-function resetForm() {
-  form.title = ''
-  form.content = ''
-  form.summary = ''
-  form.documentVersion = 'v1.0'
-  form.status = 'DRAFT'
-  editingId.value = null
-}
-
-function openCreateDialog() {
-  resetForm()
-  dialogVisible.value = true
-}
-
-function openUploadDialog() {
-  uploadForm.title = ''
-  uploadForm.documentVersion = 'v1.0'
-  uploadForm.status = 'DRAFT'
-  selectedUploadFile.value = null
-  uploadVisible.value = true
-}
-
-function openEditDialog(row: PolicyDocument) {
-  editingId.value = row.id
-  form.title = row.title
-  form.content = row.content || ''
-  form.summary = row.summary || ''
-  form.documentVersion = row.documentVersion || 'v1.0'
-  form.status = (row.status || 'DRAFT') as PolicyStatus
-  dialogVisible.value = true
-}
-
 async function openDetail(row: PolicyDocument) {
   selectedPolicy.value = await getPolicyDetail(row.id)
   detailVisible.value = true
-}
-
-async function handleSave() {
-  if (!form.title.trim()) {
-    ElMessage.warning('请填写制度标题')
-    return
-  }
-  if (editingId.value) {
-    await updatePolicy(editingId.value, { ...form })
-    ElMessage.success('制度已更新')
-  } else {
-    await createPolicy({ ...form })
-    ElMessage.success('制度已创建')
-  }
-  dialogVisible.value = false
-  await load()
-}
-
-async function handleUploadPolicy() {
-  if (!selectedUploadFile.value) {
-    ElMessage.warning('请选择制度文件')
-    return
-  }
-  uploading.value = true
-  try {
-    await uploadPolicy(selectedUploadFile.value, { ...uploadForm })
-    ElMessage.success('制度文件已上传并解析')
-    uploadVisible.value = false
-    await load()
-  } finally {
-    uploading.value = false
-  }
-}
-
-function handleUploadChange(file: UploadFile) {
-  selectedUploadFile.value = file.raw || null
-}
-
-function handleUploadRemove() {
-  selectedUploadFile.value = null
-}
-
-async function handleStatus(row: PolicyDocument, status: PolicyStatus) {
-  await updatePolicy(row.id, {
-    title: row.title,
-    content: row.content || '',
-    summary: row.summary || '',
-    documentVersion: row.documentVersion || 'v1.0',
-    status,
-  })
-  ElMessage.success(`状态已切换为${statusText(status)}`)
-  await load()
-}
-
-async function handleDelete(row: PolicyDocument) {
-  await ElMessageBox.confirm(`确认删除「${row.title}」吗？`, '删除制度', {
-    type: 'warning',
-    confirmButtonText: '删除',
-    cancelButtonText: '取消',
-  })
-  await deletePolicy(row.id)
-  ElMessage.success('制度已删除')
-  await load()
 }
 
 function statusText(status: string) {

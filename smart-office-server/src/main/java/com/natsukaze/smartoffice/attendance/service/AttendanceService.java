@@ -58,6 +58,9 @@ public class AttendanceService {
         if (record.getCheckInTime() != null) {
             throw new BusinessException("already checked in");
         }
+        if (record.getCheckOutTime() != null) {
+            throw new BusinessException("今日已下班打卡，无法再上班打卡");
+        }
         LocalDateTime now = LocalDateTime.now();
         record.setCheckInTime(now);
         record.setCheckInStatus(now.toLocalTime().isAfter(rule.getWorkStartTime().plusMinutes(rule.getLateMinutes()))
@@ -74,6 +77,9 @@ public class AttendanceService {
         AttendanceRecord record = findOrCreateTodayRecord(userId, today);
         if (record.getCheckOutTime() != null) {
             throw new BusinessException("already checked out");
+        }
+        if (record.getCheckInTime() == null) {
+            throw new BusinessException("请先完成上班打卡");
         }
         LocalDateTime now = LocalDateTime.now();
         record.setCheckOutTime(now);

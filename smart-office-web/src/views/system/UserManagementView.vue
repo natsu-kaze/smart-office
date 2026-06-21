@@ -5,10 +5,14 @@
         <el-input v-model="keyword" clearable placeholder="搜索用户名、姓名、手机号" @keyup.enter="loadUsers" />
         <el-button type="primary" @click="loadUsers">查询</el-button>
       </div>
-      <el-button @click="loadUsers">刷新</el-button>
+      <el-space>
+        <el-button type="primary" @click="openCreateDialog">新建用户</el-button>
+        <el-button @click="loadUsers">刷新</el-button>
+      </el-space>
     </header>
 
     <el-table v-loading="loading" :data="users" border>
+      <el-table-column prop="id" label="用户ID" width="180" />
       <el-table-column prop="username" label="用户名" min-width="130" />
       <el-table-column prop="realName" label="姓名" min-width="120" />
       <el-table-column prop="phone" label="手机号" min-width="140" />
@@ -38,6 +42,30 @@
       @current-change="loadUsers"
     />
 
+    <el-dialog v-model="createDialogVisible" title="新建用户" width="480px">
+      <el-form :model="createForm" label-width="80px">
+        <el-form-item label="用户名" required>
+          <el-input v-model="createForm.username" placeholder="登录用户名" />
+        </el-form-item>
+        <el-form-item label="密码" required>
+          <el-input v-model="createForm.password" type="password" show-password placeholder="登录密码" />
+        </el-form-item>
+        <el-form-item label="姓名" required>
+          <el-input v-model="createForm.realName" placeholder="真实姓名" />
+        </el-form-item>
+        <el-form-item label="手机号">
+          <el-input v-model="createForm.phone" placeholder="手机号" />
+        </el-form-item>
+        <el-form-item label="邮箱">
+          <el-input v-model="createForm.email" placeholder="邮箱地址" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="createDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="creating" @click="handleCreate">创建</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="roleDialogVisible" title="分配用户角色" width="460px">
       <el-form label-width="88px">
         <el-form-item label="用户">
@@ -58,9 +86,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { assignUserRoles, getRoleOptions, getUsers } from '@/api/system'
+import { assignUserRoles, createUser, getRoleOptions, getUsers } from '@/api/system'
 import type { ApiId, RoleItem, UserItem } from '@/types/api'
 
 const users = ref<UserItem[]>([])
@@ -74,6 +102,15 @@ const roleDialogVisible = ref(false)
 const savingRoles = ref(false)
 const selectedUser = ref<UserItem | null>(null)
 const selectedRoleIds = ref<ApiId[]>([])
+const createDialogVisible = ref(false)
+const creating = ref(false)
+const createForm = reactive({
+  username: '',
+  password: '',
+  realName: '',
+  phone: '',
+  email: '',
+})
 
 async function loadUsers() {
   loading.value = true
@@ -94,6 +131,31 @@ function openRoleDialog(row: UserItem) {
   selectedUser.value = row
   selectedRoleIds.value = [...(row.roleIds || [])]
   roleDialogVisible.value = true
+}
+
+function openCreateDialog() {
+  createForm.username = ''
+  createForm.password = ''
+  createForm.realName = ''
+  createForm.phone = ''
+  createForm.email = ''
+  createDialogVisible.value = true
+}
+
+async function handleCreate() {
+  if (!createForm.username.trim() || !createForm.password.trim() || !createForm.realName.trim()) {
+    ElMessage.warning('用户名、密码、姓名不能为空')
+    return
+  }
+  creating.value = true
+  try {
+    await createUser({ ...createForm })
+    ElMessage.success('用户创建成功')
+    createDialogVisible.value = false
+    await loadUsers()
+  } finally {
+    creating.value = false
+  }
 }
 
 async function saveUserRoles() {

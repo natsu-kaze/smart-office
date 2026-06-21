@@ -4,6 +4,7 @@ import com.natsukaze.smartoffice.common.core.PageResult;
 import com.natsukaze.smartoffice.common.core.Result;
 import com.natsukaze.smartoffice.systemservice.user.dto.PasswordChangeRequest;
 import com.natsukaze.smartoffice.systemservice.user.dto.ProfileUpdateRequest;
+import com.natsukaze.smartoffice.systemservice.user.dto.UserCreateRequest;
 import com.natsukaze.smartoffice.systemservice.user.dto.UserPageQuery;
 import com.natsukaze.smartoffice.systemservice.user.dto.UserRoleAssignRequest;
 import com.natsukaze.smartoffice.systemservice.user.service.SystemPermissionService;
@@ -14,11 +15,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/system/users")
@@ -29,9 +33,19 @@ public class SystemUserController {
 
     private final SystemPermissionService permissionService;
 
+    @PostMapping
+    public Result<UserVO> create(@RequestBody UserCreateRequest request) {
+        return Result.success(systemUserService.createUser(request));
+    }
+
     @GetMapping
     public Result<PageResult<UserVO>> page(@ModelAttribute UserPageQuery query) {
         return Result.success(systemUserService.page(query));
+    }
+
+    @GetMapping("/options")
+    public Result<List<UserVO>> options() {
+        return Result.success(systemUserService.listEnabledOptions());
     }
 
     @GetMapping("/profile")

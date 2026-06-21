@@ -117,18 +117,32 @@ public class FileRecordService {
 
     public PageResult<FileRecordVO> myFiles(Long uploaderId, FileRecordPageQuery query) {
         BusinessType businessType = BusinessType.ofNullable(query.getBusinessType());
+        LambdaQueryWrapper<FileRecord> wrapper = new LambdaQueryWrapper<FileRecord>()
+                .eq(FileRecord::getUploaderId, uploaderId)
+                .eq(businessType != null, FileRecord::getBusinessType, businessType);
+        if (businessType == null) {
+            wrapper.and(w -> w
+                    .and(noType -> noType
+                            .isNull(FileRecord::getBusinessType)
+                            .and(content -> content
+                                    .isNull(FileRecord::getContentType)
+                                    .or()
+                                    .notLikeRight(FileRecord::getContentType, "image/")))
+                    .or(w2 -> w2
+                            .isNotNull(FileRecord::getBusinessType)
+                            .ne(FileRecord::getBusinessType, BusinessType.AVATAR)));
+        }
+        if (StringUtils.hasText(query.getKeyword())) {
+            wrapper.and(w -> w
+                    .like(FileRecord::getOriginalName, query.getKeyword())
+                    .or()
+                    .like(FileRecord::getContentType, query.getKeyword())
+                    .or()
+                    .like(FileRecord::getObjectKey, query.getKeyword()));
+        }
+        wrapper.orderByDesc(FileRecord::getCreateTime);
         Page<FileRecord> page = fileRecordMapper.selectPage(
-                new Page<>(query.getCurrent(), query.getSize()),
-                new LambdaQueryWrapper<FileRecord>()
-                        .eq(FileRecord::getUploaderId, uploaderId)
-                        .eq(businessType != null, FileRecord::getBusinessType, businessType)
-                        .and(StringUtils.hasText(query.getKeyword()), w -> w
-                                .like(FileRecord::getOriginalName, query.getKeyword())
-                                .or()
-                                .like(FileRecord::getContentType, query.getKeyword())
-                                .or()
-                                .like(FileRecord::getObjectKey, query.getKeyword()))
-                        .orderByDesc(FileRecord::getCreateTime));
+                new Page<>(query.getCurrent(), query.getSize()), wrapper);
         return PageResult.from(page.convert(this::toVO));
     }
 

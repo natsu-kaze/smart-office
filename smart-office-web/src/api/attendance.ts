@@ -5,12 +5,12 @@ export function getTodayAttendance() {
   return request.get<AttendanceToday>('/api/attendance/today')
 }
 
-export function checkIn() {
-  return request.post<AttendanceToday>('/api/attendance/check-in')
+export function checkIn(remark?: string) {
+  return request.post<AttendanceToday>('/api/attendance/check-in', remark ? { remark } : undefined)
 }
 
-export function checkOut() {
-  return request.post<AttendanceToday>('/api/attendance/check-out')
+export function checkOut(remark?: string) {
+  return request.post<AttendanceToday>('/api/attendance/check-out', remark ? { remark } : undefined)
 }
 
 export function getMyAttendanceRecords(params: Record<string, unknown>) {

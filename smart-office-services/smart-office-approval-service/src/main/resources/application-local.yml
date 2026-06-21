@@ -23,6 +23,7 @@ spring:
       - optional:nacos:shared-mybatis.yaml
       - optional:nacos:shared-logs.yaml
       - optional:nacos:shared-feign.yaml
+      - optional:nacos:shared-sentinel.yaml
 
 smart-office:
   xxl-job:

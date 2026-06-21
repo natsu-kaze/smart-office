@@ -24,19 +24,19 @@ const routes: RouteRecordRaw[] = [
         path: 'system/users',
         name: 'users',
         component: () => import('@/views/system/UserManagementView.vue'),
-        meta: { title: '用户管理', permission: 'sys:user:list', roles: ['ADMIN'] },
+        meta: { title: '用户管理', permission: 'sys:user:list' },
       },
       {
         path: 'system/roles',
         name: 'roles',
         component: () => import('@/views/system/RolePermissionView.vue'),
-        meta: { title: '角色权限', permission: 'sys:role:list', roles: ['ADMIN'] },
+        meta: { title: '角色权限', permission: 'sys:role:list' },
       },
       {
         path: 'org',
         name: 'org',
         component: () => import('@/views/org/OrganizationView.vue'),
-        meta: { title: '组织架构', permission: 'org:manage', roles: ['ADMIN', 'MANAGER'] },
+        meta: { title: '组织架构', permission: 'org:manage' },
       },
       {
         path: 'approvals',
@@ -61,6 +61,12 @@ const routes: RouteRecordRaw[] = [
         name: 'policies',
         component: () => import('@/views/policy/PolicyDocumentView.vue'),
         meta: { title: '制度文档', permission: 'policy:list' },
+      },
+      {
+        path: 'policies/manage',
+        name: 'policiesManage',
+        component: () => import('@/views/policy/PolicyDocumentManageView.vue'),
+        meta: { title: '制度管理', permission: 'policy:manage' },
       },
       {
         path: 'attendance',
@@ -99,7 +105,7 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore()
   if (to.meta.public) {
     return true
@@ -107,11 +113,11 @@ router.beforeEach((to) => {
   if (!authStore.isLoggedIn) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }
-  if (authStore.hasRole('ADMIN')) {
-    return true
+  await authStore.ensureCurrentUser()
+  if (!authStore.isLoggedIn) {
+    return { path: '/login', query: { redirect: to.fullPath } }
   }
-  const roles = to.meta.roles as string[] | undefined
-  if (roles?.some((role) => authStore.hasRole(role))) {
+  if (authStore.isSuperAdmin) {
     return true
   }
   const permission = to.meta.permission as string | undefined

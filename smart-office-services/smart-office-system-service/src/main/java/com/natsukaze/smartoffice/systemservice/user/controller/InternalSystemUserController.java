@@ -38,4 +38,9 @@ public class InternalSystemUserController {
         systemUserService.updateLastLoginTime(userId);
         return Result.success();
     }
+
+    @GetMapping("/{userId}/has-role/{roleCode}")
+    public Result<Boolean> hasRole(@PathVariable Long userId, @PathVariable String roleCode) {
+        return Result.success(systemUserService.hasRole(userId, roleCode));
+    }
 }

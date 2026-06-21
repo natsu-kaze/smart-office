@@ -28,13 +28,66 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class SystemPermissionService {
+
+    private static final String DEFAULT_ROLE = "EMPLOYEE";
+
+    private static final Map<String, List<String>> DEFAULT_ROLE_PERMISSIONS = Map.of(
+            "ADMIN", List.of(
+                    "dashboard:view",
+                    "sys:user:list",
+                    "sys:user:role",
+                    "sys:role:list",
+                    "sys:role:save",
+                    "sys:role:menu",
+                    "org:manage",
+                    "approval:list",
+                    "message:list",
+                    "message:announcement:send",
+                    "file:list",
+                    "file:delete",
+                    "policy:list",
+                    "policy:manage",
+                    "attendance:list",
+                    "attendance:department:list"
+            ),
+            "MANAGER", List.of(
+                    "dashboard:view",
+                    "org:manage",
+                    "approval:list",
+                    "message:list",
+                    "message:announcement:send",
+                    "file:list",
+                    "policy:list",
+                    "policy:manage",
+                    "attendance:list",
+                    "attendance:department:list"
+            ),
+            "EMPLOYEE", List.of(
+                    "dashboard:view",
+                    "approval:list",
+                    "message:list",
+                    "file:list",
+                    "policy:list",
+                    "attendance:list"
+            ),
+            "FINANCE", List.of(
+                    "dashboard:view",
+                    "approval:list",
+                    "message:list",
+                    "file:list",
+                    "policy:list",
+                    "attendance:list"
+            )
+    );
 
     private final SysRoleMapper roleMapper;
 
@@ -94,7 +147,7 @@ public class SystemPermissionService {
         if (userCount > 0) {
             throw new BusinessException("role is assigned to users");
         }
-        roleMenuMapper.delete(new LambdaQueryWrapper<SysRoleMenu>().eq(SysRoleMenu::getRoleId, roleId));
+        roleMenuMapper.physicalDeleteByRoleId(roleId);
         roleMapper.deleteById(roleId);
     }
 
@@ -120,7 +173,7 @@ public class SystemPermissionService {
     @Transactional
     public void assignRoleMenus(Long roleId, RoleMenuAssignRequest request) {
         getRequiredRole(roleId);
-        roleMenuMapper.delete(new LambdaQueryWrapper<SysRoleMenu>().eq(SysRoleMenu::getRoleId, roleId));
+        roleMenuMapper.physicalDeleteByRoleId(roleId);
         if (CollectionUtils.isEmpty(request.getMenuIds())) {
             return;
         }
@@ -137,7 +190,7 @@ public class SystemPermissionService {
         if (userMapper.selectById(userId) == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "user not found");
         }
-        userRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, userId));
+        userRoleMapper.physicalDeleteByUserId(userId);
         if (CollectionUtils.isEmpty(request.getRoleIds())) {
             return;
         }
@@ -157,8 +210,9 @@ public class SystemPermissionService {
                 .map(SysUserRole::getRoleId)
                 .toList();
         if (CollectionUtils.isEmpty(roleIds)) {
-            return List.of();
+            return DEFAULT_ROLE_PERMISSIONS.get(DEFAULT_ROLE);
         }
+        Set<String> permissions = new LinkedHashSet<>();
         List<Long> menuIds = roleMenuMapper.selectList(new LambdaQueryWrapper<SysRoleMenu>()
                         .in(SysRoleMenu::getRoleId, roleIds))
                 .stream()
@@ -166,14 +220,22 @@ public class SystemPermissionService {
                 .distinct()
                 .toList();
         if (CollectionUtils.isEmpty(menuIds)) {
-            return List.of();
+            roleMapper.selectBatchIds(roleIds).stream()
+                    .filter(role -> Integer.valueOf(1).equals(role.getStatus()))
+                    .map(SysRole::getRoleCode)
+                    .filter(StringUtils::hasText)
+                    .map(String::toUpperCase)
+                    .map(DEFAULT_ROLE_PERMISSIONS::get)
+                    .filter(list -> !CollectionUtils.isEmpty(list))
+                    .forEach(permissions::addAll);
+            return new ArrayList<>(permissions);
         }
-        return menuMapper.selectBatchIds(menuIds).stream()
+        menuMapper.selectBatchIds(menuIds).stream()
                 .filter(menu -> Integer.valueOf(1).equals(menu.getStatus()))
                 .map(SysMenu::getPermission)
                 .filter(StringUtils::hasText)
-                .distinct()
-                .toList();
+                .forEach(permissions::add);
+        return new ArrayList<>(permissions);
     }
 
     private void ensureRoleCodeUnique(Long roleId, String roleCode) {

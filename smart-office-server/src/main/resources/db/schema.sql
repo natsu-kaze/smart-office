@@ -158,6 +158,8 @@ CREATE TABLE IF NOT EXISTS approval_form (
     applicant_dept_id BIGINT DEFAULT NULL,
     content TEXT DEFAULT NULL,
     amount DECIMAL(12,2) DEFAULT NULL,
+    leave_start_date DATE DEFAULT NULL,
+    leave_end_date DATE DEFAULT NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'DRAFT',
     current_approver_id BIGINT DEFAULT NULL,
     submitted_at DATETIME DEFAULT NULL,
@@ -211,8 +213,14 @@ CREATE TABLE IF NOT EXISTS approval_process (
 CREATE TABLE IF NOT EXISTS approval_rule (
     id BIGINT PRIMARY KEY,
     approval_type VARCHAR(32) NOT NULL,
+    name VARCHAR(128) DEFAULT NULL COMMENT 'rule display name',
+    priority INT NOT NULL DEFAULT 0 COMMENT 'higher = checked first',
     amount_limit DECIMAL(12,2) DEFAULT NULL,
+    applicant_role_code VARCHAR(64) DEFAULT NULL COMMENT 'applicant must have this role',
+    dept_id BIGINT DEFAULT NULL COMMENT 'scope to department, null=global',
     required_roles VARCHAR(255) DEFAULT NULL,
+    timeout_hours INT DEFAULT NULL COMMENT 'hours before timeout triggers',
+    timeout_action VARCHAR(32) DEFAULT NULL COMMENT 'AUTO_APPROVE|AUTO_REJECT|ESCALATE',
     status TINYINT NOT NULL DEFAULT 1,
     remark VARCHAR(255) DEFAULT NULL,
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -220,7 +228,9 @@ CREATE TABLE IF NOT EXISTS approval_rule (
     created_by BIGINT DEFAULT NULL,
     updated_by BIGINT DEFAULT NULL,
     deleted TINYINT NOT NULL DEFAULT 0,
-    version INT NOT NULL DEFAULT 0
+    version INT NOT NULL DEFAULT 0,
+    INDEX idx_ar_type_status (approval_type, status),
+    INDEX idx_ar_dept (dept_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Approval rule';
 
 CREATE TABLE IF NOT EXISTS approval_attachment (
@@ -294,6 +304,7 @@ CREATE TABLE IF NOT EXISTS message_notice (
     user_id BIGINT NOT NULL,
     title VARCHAR(128) NOT NULL,
     content VARCHAR(1000) NOT NULL,
+    sender_name VARCHAR(64) DEFAULT NULL COMMENT 'sender display name for announcements',
     business_type VARCHAR(32) DEFAULT NULL,
     business_id BIGINT DEFAULT NULL,
     read_status TINYINT NOT NULL DEFAULT 0,

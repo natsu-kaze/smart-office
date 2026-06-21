@@ -19,6 +19,8 @@ public class MessageNotice extends BaseEntity {
 
     private String content;
 
+    private String senderName;
+
     private BusinessType businessType;
 
     private Long businessId;

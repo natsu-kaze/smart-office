@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -26,6 +27,10 @@ public class ApprovalForm extends BaseEntity {
     private String content;
 
     private BigDecimal amount;
+
+    private LocalDate leaveStartDate;
+
+    private LocalDate leaveEndDate;
 
     private ApprovalStatus status;
 

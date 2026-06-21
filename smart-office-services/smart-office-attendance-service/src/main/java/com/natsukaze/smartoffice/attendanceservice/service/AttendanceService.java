@@ -2,6 +2,7 @@ package com.natsukaze.smartoffice.attendanceservice.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.natsukaze.smartoffice.api.attendance.dto.LeaveAttendanceCommand;
 import com.natsukaze.smartoffice.api.org.client.OrgEmployeeClient;
 import com.natsukaze.smartoffice.api.org.dto.OrgEmployeeDTO;
 import com.natsukaze.smartoffice.api.system.client.SystemUserClient;
@@ -28,10 +29,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -50,34 +53,58 @@ public class AttendanceService {
 
     @Transactional
     public AttendanceRecordVO checkIn(Long userId) {
+        return checkIn(userId, null);
+    }
+
+    @Transactional
+    public AttendanceRecordVO checkIn(Long userId, String remark) {
         requireUser(userId);
         LocalDate today = LocalDate.now();
         AttendanceRule rule = activeRule();
         AttendanceRecord record = findOrCreateTodayRecord(userId, today);
+        ensureNotLeave(record);
         if (record.getCheckInTime() != null) {
             throw new BusinessException("already checked in");
+        }
+        if (record.getCheckOutTime() != null) {
+            throw new BusinessException("今日已下班打卡，无法再上班打卡");
         }
         LocalDateTime now = LocalDateTime.now();
         record.setCheckInTime(now);
         record.setCheckInStatus(now.toLocalTime().isAfter(rule.getWorkStartTime().plusMinutes(rule.getLateMinutes()))
                 ? AttendanceStatus.LATE : AttendanceStatus.NORMAL);
+        if (remark != null && !remark.isBlank()) {
+            record.setRemark(remark);
+        }
         saveRecord(record);
         return toRecordVO(record);
     }
 
     @Transactional
     public AttendanceRecordVO checkOut(Long userId) {
+        return checkOut(userId, null);
+    }
+
+    @Transactional
+    public AttendanceRecordVO checkOut(Long userId, String remark) {
         requireUser(userId);
         LocalDate today = LocalDate.now();
         AttendanceRule rule = activeRule();
         AttendanceRecord record = findOrCreateTodayRecord(userId, today);
+        ensureNotLeave(record);
         if (record.getCheckOutTime() != null) {
             throw new BusinessException("already checked out");
+        }
+        if (record.getCheckInTime() == null) {
+            throw new BusinessException("请先完成上班打卡");
         }
         LocalDateTime now = LocalDateTime.now();
         record.setCheckOutTime(now);
         record.setCheckOutStatus(now.toLocalTime().isBefore(rule.getWorkEndTime().minusMinutes(rule.getEarlyLeaveMinutes()))
                 ? AttendanceStatus.EARLY_LEAVE : AttendanceStatus.NORMAL);
+        if (remark != null && !remark.isBlank()) {
+            record.setRemark(remark);
+        }
         saveRecord(record);
         return toRecordVO(record);
     }
@@ -104,7 +131,11 @@ public class AttendanceService {
     public PageResult<AttendanceRecordVO> departmentRecords(Long operatorUserId, String username, AttendanceRecordQuery query) {
         ensureAttendanceManager(operatorUserId, username);
         if (query.getDepartmentId() == null) {
-            throw new BusinessException("departmentId is required");
+            OrgEmployeeDTO employee = safeEmployee(operatorUserId);
+            if (employee == null || employee.departmentId() == null) {
+                throw new BusinessException("departmentId is required");
+            }
+            query.setDepartmentId(employee.departmentId());
         }
         return pageRecords(query);
     }
@@ -138,6 +169,43 @@ public class AttendanceService {
             return buildSummaryFromRecords(userId, summaryMonth);
         }
         return toSummaryVO(summary);
+    }
+
+    @Transactional
+    public void markLeave(LeaveAttendanceCommand command) {
+        if (command == null || command.userId() == null || command.startDate() == null || command.endDate() == null) {
+            throw new BusinessException("leave attendance command is invalid");
+        }
+        if (command.endDate().isBefore(command.startDate())) {
+            throw new BusinessException("leave end date cannot be before start date");
+        }
+        long days = ChronoUnit.DAYS.between(command.startDate(), command.endDate()) + 1;
+        if (days > 31) {
+            throw new BusinessException("leave range cannot exceed 31 days");
+        }
+        for (int i = 0; i < days; i++) {
+            LocalDate date = command.startDate().plusDays(i);
+            AttendanceRecord record = recordMapper.selectOne(new LambdaQueryWrapper<AttendanceRecord>()
+                    .eq(AttendanceRecord::getUserId, command.userId())
+                    .eq(AttendanceRecord::getAttendanceDate, date)
+                    .last("LIMIT 1"));
+            if (record == null) {
+                record = new AttendanceRecord();
+                record.setUserId(command.userId());
+                record.setAttendanceDate(date);
+            }
+            record.setCheckInStatus(AttendanceStatus.LEAVE);
+            record.setCheckOutStatus(AttendanceStatus.LEAVE);
+            record.setRemark("Leave approved by approval form #" + command.approvalId());
+            saveRecord(record);
+        }
+        YearMonth startMonth = YearMonth.from(command.startDate());
+        YearMonth endMonth = YearMonth.from(command.endDate());
+        YearMonth cursor = startMonth;
+        while (!cursor.isAfter(endMonth)) {
+            upsertMonthlySummary(command.userId(), cursor);
+            cursor = cursor.plusMonths(1);
+        }
     }
 
     public AttendanceRuleVO getRule() {
@@ -175,6 +243,13 @@ public class AttendanceService {
         return record;
     }
 
+    private void ensureNotLeave(AttendanceRecord record) {
+        if (record.getCheckInStatus() == AttendanceStatus.LEAVE
+                || record.getCheckOutStatus() == AttendanceStatus.LEAVE) {
+            throw new BusinessException("今天已审批为请假，无需打卡");
+        }
+    }
+
     private void saveRecord(AttendanceRecord record) {
         if (record.getId() == null) {
             recordMapper.insert(record);
@@ -210,7 +285,7 @@ public class AttendanceService {
     }
 
     private void ensureAttendanceManager(Long operatorUserId, String username) {
-        CurrentUserDTO user = requireUser(operatorUserId);
+        requireUser(operatorUserId);
         Result<SystemAuthUserDTO> result = systemUserClient.getByUsername(username);
         if (!success(result) || result.data() == null || result.data().roles() == null) {
             throw new BusinessException("permission denied");
@@ -220,7 +295,8 @@ public class AttendanceService {
         if (!allowed) {
             throw new BusinessException("permission denied");
         }
-        if (user.departmentId() == null && result.data().roles().stream().noneMatch("ADMIN"::equals)) {
+        if (result.data().roles().stream().noneMatch("ADMIN"::equals)
+                && safeEmployee(operatorUserId) == null) {
             throw new BusinessException("department not found");
         }
     }
@@ -254,6 +330,31 @@ public class AttendanceService {
                 .leaveDays(java.math.BigDecimal.valueOf(leaveDays))
                 .overtimeHours(java.math.BigDecimal.ZERO)
                 .build();
+    }
+
+    private void upsertMonthlySummary(Long userId, YearMonth month) {
+        AttendanceSummaryVO snapshot = buildSummaryFromRecords(userId, month.toString());
+        AttendanceSummary summary = summaryMapper.selectOne(new LambdaQueryWrapper<AttendanceSummary>()
+                .eq(AttendanceSummary::getUserId, userId)
+                .eq(AttendanceSummary::getSummaryMonth, month.toString())
+                .last("LIMIT 1"));
+        boolean creating = summary == null;
+        if (creating) {
+            summary = new AttendanceSummary();
+            summary.setUserId(userId);
+            summary.setSummaryMonth(month.toString());
+        }
+        summary.setNormalDays(snapshot.getNormalDays());
+        summary.setLateCount(snapshot.getLateCount());
+        summary.setEarlyLeaveCount(snapshot.getEarlyLeaveCount());
+        summary.setMissingCount(snapshot.getMissingCount());
+        summary.setLeaveDays(snapshot.getLeaveDays() == null ? BigDecimal.ZERO : snapshot.getLeaveDays());
+        summary.setOvertimeHours(snapshot.getOvertimeHours() == null ? BigDecimal.ZERO : snapshot.getOvertimeHours());
+        if (creating) {
+            summaryMapper.insert(summary);
+        } else {
+            summaryMapper.updateById(summary);
+        }
     }
 
     private int missingPunchCount(AttendanceRecord record) {

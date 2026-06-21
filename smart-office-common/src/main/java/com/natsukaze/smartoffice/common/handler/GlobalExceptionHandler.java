@@ -5,6 +5,7 @@ import com.natsukaze.smartoffice.common.core.Result;
 import com.natsukaze.smartoffice.common.exception.BusinessException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -45,6 +46,13 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Result<Void> handleConstraintViolationException(ConstraintViolationException ex) {
         return Result.failure(ErrorCode.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateKeyException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Result<Void> handleDuplicateKeyException(DuplicateKeyException ex) {
+        log.warn("Duplicate key conflict", ex);
+        return Result.failure(ErrorCode.BAD_REQUEST, "数据已存在或存在唯一约束冲突，请刷新后重试");
     }
 
     @ExceptionHandler(Exception.class)

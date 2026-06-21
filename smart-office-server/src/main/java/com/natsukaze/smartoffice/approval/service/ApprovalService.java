@@ -209,6 +209,8 @@ public class ApprovalService {
         form.setApplicantDeptId(employee == null ? null : employee.getDepartmentId());
         form.setContent(request.getContent());
         form.setAmount(request.getAmount());
+        form.setLeaveStartDate(request.getLeaveStartDate());
+        form.setLeaveEndDate(request.getLeaveEndDate());
     }
 
     private Long calculateFirstApprover(ApprovalForm form) {

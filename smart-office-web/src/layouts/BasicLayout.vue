@@ -53,9 +53,9 @@ const authStore = useAuthStore()
 
 const navItems = [
   { path: '/dashboard', label: '工作台', icon: DataBoard, permission: 'dashboard:view' },
-  { path: '/system/users', label: '用户管理', icon: User, permission: 'sys:user:list', roles: ['ADMIN'] },
-  { path: '/system/roles', label: '角色权限', icon: Lock, permission: 'sys:role:list', roles: ['ADMIN'] },
-  { path: '/org', label: '组织架构', icon: OfficeBuilding, permission: 'org:manage', roles: ['ADMIN', 'MANAGER'] },
+  { path: '/system/users', label: '用户管理', icon: User, permission: 'sys:user:list' },
+  { path: '/system/roles', label: '角色权限', icon: Lock, permission: 'sys:role:list' },
+  { path: '/org', label: '组织架构', icon: OfficeBuilding, permission: 'org:manage' },
   { path: '/approvals', label: '审批中心', icon: Tickets, permission: 'approval:list' },
   { path: '/messages', label: '消息中心', icon: Bell, permission: 'message:list' },
   { path: '/files', label: '文件中心', icon: FolderOpened, permission: 'file:list' },
@@ -63,11 +63,10 @@ const navItems = [
   { path: '/attendance', label: '考勤打卡', icon: Clock, permission: 'attendance:list' },
 ]
 
-const visibleNavItems = computed(() => navItems.filter((item) => canAccess(item.permission, item.roles)))
+const visibleNavItems = computed(() => navItems.filter((item) => canAccess(item.permission)))
 
-function canAccess(permission: string, roles?: string[]) {
-  if (authStore.hasRole('ADMIN')) return true
-  if (roles?.some((role) => authStore.hasRole(role))) return true
+function canAccess(permission: string) {
+  if (authStore.isSuperAdmin) return true
   return authStore.hasPermission(permission)
 }
 

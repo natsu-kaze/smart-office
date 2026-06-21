@@ -1,0 +1,14 @@
+spring:
+  cloud:
+    sentinel:
+      enabled: ${SENTINEL_ENABLED:true}
+      eager: true
+      transport:
+        port: ${SENTINEL_TRANSPORT_PORT:8719}
+        dashboard: ${SENTINEL_DASHBOARD:127.0.0.1:8858}
+      http-method-specify: true
+      block-page: /error
+
+feign:
+  sentinel:
+    enabled: true
